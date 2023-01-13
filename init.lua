@@ -531,6 +531,8 @@ cmp.setup {
 
 -- pressing <esc> disables highlights until next search
 vim.keymap.set('n', '<esc>', ':noh<return><esc>', { noremap = true })
+-- map 'kj' to <esc> because xps plus's touch esc is bad
+vim.keymap.set('i', 'kj', '<esc>', { noremap = true })
 
 -- set ctrl-d and ctrl-u to 25% of screen hight instead of the default 50%
 vim.keymap.set('n', '<C-d>', (vim.api.nvim_win_get_height(0) / 4 - 1) .. '<C-d>')
