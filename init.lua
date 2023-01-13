@@ -620,3 +620,4 @@ vim.keymap.set('v', '<leader>ds', [[<ESC>:lua require('dap-python').debug_select
 -- NVIM-DAP-UI
 require('dapui').setup()
 vim.keymap.set('n', '<leader>du', require('dapui').toggle)
+vim.keymap.set('n', '<leader>de', require('dapui').eval)
