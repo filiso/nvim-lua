@@ -623,4 +623,4 @@ vim.keymap.set('v', '<leader>ds', [[<ESC>:lua require('dap-python').debug_select
 require('dapui').setup()
 vim.keymap.set('n', '<leader>du', require('dapui').toggle)
 vim.keymap.set('n', '<leader>de', require('dapui').eval)
-vim.keymap.set('i', '<leader>de', require('dapui').eval)
+vim.keymap.set('v', '<leader>de', require('dapui').eval)
