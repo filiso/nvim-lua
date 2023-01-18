@@ -431,7 +431,7 @@ local servers = {
       plugins = {
         pycodestyle = {
           -- ignore = {'E402'},
-          maxLineLength = 88
+          maxLineLength = 100
         },
         -- black = {
         --   enabled = true,
