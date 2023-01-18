@@ -568,15 +568,19 @@ end
 
 -- HOP
 require('hop').setup()
--- vim.keymap.set('n', '<leader>h', ':HopWord<CR>')
 vim.keymap.set('', '<leader>h', require('hop').hint_words)
 vim.keymap.set('', '<leader>H', function()
   require('hop').hint_words({ current_line_only = true })
 end)
-vim.keymap.set('', '<leader>l', function()
+vim.keymap.set('', '<leader>j', function()
   require('hop').hint_char1({ current_line_only = true })
 end)
 vim.keymap.set('', '<leader>k', require('hop').hint_char1)
+vim.keymap.set('', '<leader>l', require('hop').hint_lines)
+
+vim.cmd("hi HopNextKey guifg=#ff9900")
+vim.cmd("hi HopNextKey1 guifg=#ff9900")
+vim.cmd("hi HopNextKey2 guifg=#ff9900")
 
 -- NVIM-TREE
 require("nvim-tree").setup({
