@@ -554,11 +554,17 @@ function string.split(str, sep)
     return fields
 end
 
-vim.g.slime_default_config = {
-        socket_name = string.split(os.getenv("TMUX"), ",")[1],
-        target_pane = "{bottom-right}"
-}
-vim.g.slime_dont_ask_default = 1
+local function istmux()
+  return os.getenv("TMUX") ~= nil
+end
+
+if istmux() then
+  vim.g.slime_default_config = {
+          socket_name = string.split(os.getenv("TMUX"), ",")[1],
+          target_pane = "{bottom-right}"
+  }
+  vim.g.slime_dont_ask_default = 1
+end
 
 -- HOP
 require('hop').setup()
