@@ -106,6 +106,7 @@ require('packer').startup(function(use)
   use 'mfussenegger/nvim-dap'
   use 'mfussenegger/nvim-dap-python'
   use 'rcarriga/nvim-dap-ui'
+  use 'rcarriga/cmp-dap'
   -- use 'jayp0521/mason-nvim-dap.nvim'
 
   -- Add custom plugins to packer from ~/.config/nvim/lua/custom/plugins.lua
@@ -485,6 +486,12 @@ local cmp = require 'cmp'
 local luasnip = require 'luasnip'
 
 cmp.setup {
+  -- MY ADDITION
+  enabled = function()
+    return vim.api.nvim_buf_get_option(0, "buftype") ~= "prompt"
+        or require("cmp_dap").is_dap_buffer()
+  end,
+  -- MY ADDITION END
   snippet = {
     expand = function(args)
       luasnip.lsp_expand(args.body)
@@ -523,6 +530,13 @@ cmp.setup {
     { name = 'luasnip' },
   },
 }
+-- MY ADDITION
+require("cmp").setup.filetype({ "dap-repl", "dapui_watches", "dapui_hover" }, {
+  sources = {
+    { name = "dap" },
+  },
+})
+-- MY ADDITION END
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
