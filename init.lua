@@ -638,6 +638,7 @@ vim.keymap.set('n', '<leader>B', [[:lua require'dap'.set_breakpoint(vim.fn.input
 vim.keymap.set('n', '<leader>lp', [[:lua require'dap'.set_breakpoint(nil, nil, vim.fn.input('Log point message: '))<CR>]]) -- , { silent = true })
 vim.keymap.set('n', '<leader>dr', ":lua require'dap'.repl.open()<CR>") -- , { silent = true })
 vim.keymap.set('n', '<leader>dl', ":lua require'dap'.run_last()<CR>") -- , { silent = true })
+vim.keymap.set('n', '<leader>dc', ":lua require'dap'.run_to_cursor()<CR>") -- , { silent = true })
 -- nvim-dap-python keymaps
 vim.keymap.set('n', '<leader>dn', ":lua require('dap-python').test_method()<CR>") -- , { silent = true })
 vim.keymap.set('n', '<leader>df', ":lua require('dap-python').test_class()<CR>") -- , { silent = true })
