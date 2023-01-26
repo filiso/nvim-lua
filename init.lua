@@ -233,7 +233,33 @@ require('lualine').setup {
 }
 
 -- Enable Comment.nvim
-require('Comment').setup()
+require('Comment').setup {
+    ---LHS of toggle mappings in NORMAL mode
+    toggler = {
+        ---Line-comment toggle keymap
+        -- line = 'gcc',
+        line = '<leader>/',
+        ---Block-comment toggle keymap
+        block = 'gbc',
+    },
+    ---LHS of operator-pending mappings in NORMAL and VISUAL mode
+    opleader = {
+        ---Line-comment keymap
+        -- line = 'gc',
+        line = '<leader>/',
+        ---Block-comment keymap
+        block = 'gb',
+    },
+    ---LHS of extra mappings
+    extra = {
+        ---Add comment on the line above
+        above = 'gcO',
+        ---Add comment on the line below
+        below = 'gco',
+        ---Add comment at the end of line
+        eol = 'gcA',
+    },
+}
 
 -- Enable `lukas-reineke/indent-blankline.nvim`
 -- See `:help indent_blankline.txt`
@@ -273,8 +299,8 @@ pcall(require('telescope').load_extension, 'fzf')
 
 -- See `:help telescope.builtin`
 vim.keymap.set('n', '<leader>?', require('telescope.builtin').oldfiles, { desc = '[?] Find recently opened files' })
-vim.keymap.set('n', '<leader><space>', require('telescope.builtin').buffers, { desc = '[ ] Find existing buffers' })
-vim.keymap.set('n', '<leader>/', function()
+vim.keymap.set('n', '<leader>l', require('telescope.builtin').buffers, { desc = '[ ] Find existing buffers' })
+vim.keymap.set('n', '<leader><space>', function()
   -- You can pass additional configuration to telescope to change theme, layout, etc.
   require('telescope.builtin').current_buffer_fuzzy_find(require('telescope.themes').get_dropdown {
     winblend = 10,
@@ -589,8 +615,8 @@ end)
 vim.keymap.set('', '<leader>j', function()
   require('hop').hint_char1({ current_line_only = true })
 end)
-vim.keymap.set('', '<leader>k', require('hop').hint_char1)
-vim.keymap.set('', '<leader>l', require('hop').hint_lines)
+vim.keymap.set('', '<leader>J', require('hop').hint_char1)
+vim.keymap.set('', '<leader>k', require('hop').hint_lines)
 
 vim.cmd("hi HopNextKey guifg=#ff9900")
 vim.cmd("hi HopNextKey1 guifg=#ff9900")
