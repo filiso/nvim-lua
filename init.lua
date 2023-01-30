@@ -413,7 +413,7 @@ local on_attach = function(_, bufnr)
 
   -- See `:help K` for why this keymap
   nmap('K', vim.lsp.buf.hover, 'Hover Documentation')
-  nmap('<C-k>', vim.lsp.buf.signature_help, 'Signature Documentation')
+  nmap('KK', vim.lsp.buf.signature_help, 'Signature Documentation')
 
   -- Lesser used LSP functionality
   nmap('gD', vim.lsp.buf.declaration, '[G]oto [D]eclaration')
@@ -574,6 +574,10 @@ vim.keymap.set('n', '<esc>', ':noh<return><esc>', { noremap = true })
 -- map 'kj' to <esc> because xps plus's touch esc is bad
 vim.keymap.set('i', 'kj', '<esc>', { noremap = true })
 vim.keymap.set('i', 'lk', '<esc>', { noremap = true })
+vim.keymap.set('n', '<leader>q', '<esc>', { noremap = true })
+vim.keymap.set('n', '<leader>qq', '<esc><esc>', { noremap = true })
+vim.keymap.set('v', '<leader>q', '<esc>', { noremap = true })
+vim.keymap.set('v', '<leader>qq', '<esc><esc>', { noremap = true })
 
 -- set ctrl-d and ctrl-u to 25% of screen hight instead of the default 50%
 vim.keymap.set('n', '<C-d>', (vim.api.nvim_win_get_height(0) / 4 - 1) .. '<C-d>')
