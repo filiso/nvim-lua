@@ -35,6 +35,12 @@ require('packer').startup(function(use)
     requires = { 'hrsh7th/cmp-nvim-lsp', 'L3MON4D3/LuaSnip', 'saadparwaiz1/cmp_luasnip' },
   }
 
+  use { -- Tabnine AI autocompletion
+    'tzachar/cmp-tabnine',
+    run='./install.sh',
+    requires = 'hrsh7th/nvim-cmp'
+  }
+
   use { -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
     run = function()
@@ -289,6 +295,9 @@ require('telescope').setup {
       i = {
         ['<C-u>'] = false,
         ['<C-d>'] = false,
+      },
+      n = {
+        ['q'] = require('telescope.actions').close,
       },
     },
   },
@@ -554,6 +563,7 @@ cmp.setup {
   sources = {
     { name = 'nvim_lsp' },
     { name = 'luasnip' },
+    { name = 'cmp_tabnine' },
   },
 }
 -- MY ADDITION
@@ -574,10 +584,8 @@ vim.keymap.set('n', '<esc>', ':noh<return><esc>', { noremap = true })
 -- map 'kj' to <esc> because xps plus's touch esc is bad
 vim.keymap.set('i', 'kj', '<esc>', { noremap = true })
 vim.keymap.set('i', 'lk', '<esc>', { noremap = true })
-vim.keymap.set('n', '<leader>q', '<esc>', { noremap = true })
-vim.keymap.set('n', '<leader>qq', '<esc><esc>', { noremap = true })
-vim.keymap.set('v', '<leader>q', '<esc>', { noremap = true })
-vim.keymap.set('v', '<leader>qq', '<esc><esc>', { noremap = true })
+vim.keymap.set('n', 'q', '<esc>', { noremap = true })
+vim.keymap.set('v', 'q', '<esc>', { noremap = true })
 
 -- set ctrl-d and ctrl-u to 25% of screen hight instead of the default 50%
 vim.keymap.set('n', '<C-d>', (vim.api.nvim_win_get_height(0) / 4 - 1) .. '<C-d>')
@@ -666,7 +674,7 @@ vim.keymap.set('n', '<F7>', ":lua require'dap'.step_into()<CR>") -- , { silent =
 vim.keymap.set('n', '<F8>', ":lua require'dap'.step_out()<CR>") -- , { silent = true })
 vim.keymap.set('n', '<leader>b', ":lua require'dap'.toggle_breakpoint()<CR>") -- , { silent = true })
 vim.keymap.set('n', '<leader>B', [[:lua require'dap'.set_breakpoint(vim.fn.input('Breakpoint condition: '))<CR>]]) -- , { silent = true })
-vim.keymap.set('n', '<leader>lp', [[:lua require'dap'.set_breakpoint(nil, nil, vim.fn.input('Log point message: '))<CR>]]) -- , { silent = true })
+vim.keymap.set('n', '<leader>dp', [[:lua require'dap'.set_breakpoint(nil, nil, vim.fn.input('Log point message: '))<CR>]]) -- , { silent = true })
 vim.keymap.set('n', '<leader>dr', ":lua require'dap'.repl.open()<CR>") -- , { silent = true })
 vim.keymap.set('n', '<leader>dl', ":lua require'dap'.run_last()<CR>") -- , { silent = true })
 vim.keymap.set('n', '<leader>dc', ":lua require'dap'.run_to_cursor()<CR>") -- , { silent = true })
@@ -761,3 +769,20 @@ require("dapui").setup({
 vim.keymap.set('n', '<leader>du', require('dapui').toggle)
 vim.keymap.set('n', '<leader>de', require('dapui').eval)
 vim.keymap.set('v', '<leader>de', require('dapui').eval)
+
+-- TABNINE
+local tabnine = require('cmp_tabnine.config')
+
+tabnine:setup({
+	max_lines = 1000,
+	max_num_results = 20,
+	sort = true,
+	run_on_every_keystroke = true,
+	snippet_placeholder = '..',
+	ignored_file_types = {
+		-- default is not to ignore
+		-- uncomment to ignore in lua:
+		-- lua = true
+	},
+	show_prediction_strength = false
+})
