@@ -586,6 +586,7 @@ require("cmp").setup.filetype({ "dap-repl", "dapui_watches", "dapui_hover" }, {
 vim.keymap.set('n', '<esc>', ':noh<return><esc>', { noremap = true })
 -- map 'kj' to <esc> because xps plus's touch esc is bad
 vim.keymap.set('i', 'kj', '<esc>', { noremap = true })
+vim.keymap.set('i', 'jk', '<esc>', { noremap = true })
 vim.keymap.set('i', 'lk', '<esc>', { noremap = true })
 vim.keymap.set('n', 'q', '<esc>', { noremap = true })
 vim.keymap.set('v', 'q', '<esc>', { noremap = true })
