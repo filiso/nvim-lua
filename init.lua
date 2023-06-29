@@ -35,7 +35,9 @@ require('packer').startup(function(use)
     requires = { 'hrsh7th/cmp-nvim-lsp', 'L3MON4D3/LuaSnip', 'saadparwaiz1/cmp_luasnip' },
   }
 
-  use { -- Tabnine AI autocompletion
+  -- Tabnine AI autocompletion
+  use { 'codota/tabnine-nvim', run = "./dl_binaries.sh" }
+  use {
     'tzachar/cmp-tabnine',
     run='./install.sh',
     requires = 'hrsh7th/nvim-cmp'
@@ -51,6 +53,18 @@ require('packer').startup(function(use)
   use { -- Additional text objects via treesitter
     'nvim-treesitter/nvim-treesitter-textobjects',
     after = 'nvim-treesitter',
+  }
+
+  use { -- Highlight TODO, FIX, HACK, etc.
+    "folke/todo-comments.nvim",
+    requires = "nvim-lua/plenary.nvim",
+    config = function()
+      require("todo-comments").setup {
+        -- your configuration comes here
+        -- or leave it empty to use the default settings
+        -- refer to the configuration section below
+      }
+    end
   }
 
   -- Git related plugins
@@ -311,8 +325,8 @@ pcall(require('telescope').load_extension, 'fzf')
 
 -- See `:help telescope.builtin`
 vim.keymap.set('n', '<leader>?', require('telescope.builtin').oldfiles, { desc = '[?] Find recently opened files' })
-vim.keymap.set('n', '<leader>l', require('telescope.builtin').buffers, { desc = '[ ] Find existing buffers' })
-vim.keymap.set('n', '<leader><space>', function()
+vim.keymap.set('n', '<leader><space>', require('telescope.builtin').buffers, { desc = '[ ] Find existing buffers' })
+vim.keymap.set('n', '<leader>l', function()
   -- You can pass additional configuration to telescope to change theme, layout, etc.
   require('telescope.builtin').current_buffer_fuzzy_find(require('telescope.themes').get_dropdown {
     winblend = 10,
@@ -676,6 +690,8 @@ vim.keymap.set('n', '<F5>', ":lua require'dap'.continue()<CR>") -- , { silent = 
 vim.keymap.set('n', '<F6>', ":lua require'dap'.step_over()<CR>") -- , { silent = true })
 vim.keymap.set('n', '<F7>', ":lua require'dap'.step_into()<CR>") -- , { silent = true })
 vim.keymap.set('n', '<F8>', ":lua require'dap'.step_out()<CR>") -- , { silent = true })
+vim.keymap.set('n', '<F9>', ":lua require'dap'.terminate()<CR>") -- , { silent = true })
+vim.keymap.set('n', '<F10>', ":lua require'dap'.pause()<CR>") -- , { silent = true })
 vim.keymap.set('n', '<leader>b', ":lua require'dap'.toggle_breakpoint()<CR>") -- , { silent = true })
 vim.keymap.set('n', '<leader>B', [[:lua require'dap'.set_breakpoint(vim.fn.input('Breakpoint condition: '))<CR>]]) -- , { silent = true })
 vim.keymap.set('n', '<leader>dp', [[:lua require'dap'.set_breakpoint(nil, nil, vim.fn.input('Log point message: '))<CR>]]) -- , { silent = true })
@@ -775,6 +791,15 @@ vim.keymap.set('n', '<leader>de', require('dapui').eval)
 vim.keymap.set('v', '<leader>de', require('dapui').eval)
 
 -- TABNINE
+require('tabnine').setup({
+  disable_auto_comment=true,
+  accept_keymap="<Tab>",
+  dismiss_keymap = "<C-]>",
+  debounce_ms = 800,
+  suggestion_color = {gui = "#808080", cterm = 244},
+  execlude_filetypes = {"TelescopePrompt"}
+})
+
 local tabnine = require('cmp_tabnine.config')
 
 tabnine:setup({
