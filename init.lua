@@ -23,7 +23,16 @@ require('packer').startup(function(use)
       'williamboman/mason-lspconfig.nvim',
 
       -- Useful status updates for LSP
+      -- 'j-hui/fidget.nvim',
+      {
       'j-hui/fidget.nvim',
+      tag = 'legacy',
+      config = function()
+        require("fidget").setup {
+          -- options
+        }
+      end,
+      },
 
       -- Additional lua configuration, makes nvim stuff amazing
       'folke/neodev.nvim',
@@ -32,16 +41,23 @@ require('packer').startup(function(use)
 
   use { -- Autocompletion
     'hrsh7th/nvim-cmp',
-    requires = { 'hrsh7th/cmp-nvim-lsp', 'L3MON4D3/LuaSnip', 'saadparwaiz1/cmp_luasnip' },
+    -- Optional completion sources for nvim-cmp
+    requires = {
+      'hrsh7th/cmp-nvim-lsp',
+      'L3MON4D3/LuaSnip',
+      'saadparwaiz1/cmp_luasnip',
+      'hrsh7th/cmp-buffer',
+      'hrsh7th/cmp-path',
+    },
   }
 
-  -- Tabnine AI autocompletion
-  use { 'codota/tabnine-nvim', run = "./dl_binaries.sh" }
-  use {
-    'tzachar/cmp-tabnine',
-    run='./install.sh',
-    requires = 'hrsh7th/nvim-cmp'
-  }
+  -- -- Tabnine AI autocompletion
+  -- use { 'codota/tabnine-nvim', run = "./dl_binaries.sh" }
+  -- use {
+  --   'tzachar/cmp-tabnine',
+  --   run='./install.sh',
+  --   requires = 'hrsh7th/nvim-cmp'
+  -- }
 
   use { -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
@@ -67,10 +83,33 @@ require('packer').startup(function(use)
     end
   }
 
+  -- Github Copilot
+  use {
+    "zbirenbaum/copilot.lua",
+    cmd = "Copilot",
+    event = "InsertEnter",
+    config = function()
+      require("copilot").setup({
+        suggestion = { enabled = false },
+        panel = { enabled = false },
+      })
+    end,
+  }
+  use {
+    "zbirenbaum/copilot-cmp",
+    after = { "copilot.lua" },
+    config = function ()
+      require("copilot_cmp").setup()
+    end
+  }
+
   -- Git related plugins
   use 'tpope/vim-fugitive'
   use 'tpope/vim-rhubarb'
   use 'lewis6991/gitsigns.nvim'
+
+  -- VimTex
+  use 'lervag/vimtex'
 
   -- colorschemes
   use 'navarasu/onedark.nvim' -- Theme inspired by Atom
@@ -286,10 +325,10 @@ require('Comment').setup {
 
 -- Enable `lukas-reineke/indent-blankline.nvim`
 -- See `:help indent_blankline.txt`
-require('indent_blankline').setup {
-  char = '┊',
-  -- char = ' ',
-  show_trailing_blankline_indent = false,
+require('ibl').setup {
+  indent = {
+    char = '┊',
+  }
 }
 
 -- Gitsigns
@@ -495,7 +534,8 @@ local servers = {
     },
   },
 
-  sumneko_lua = {
+  -- sumneko_lua = {
+  lua_ls = {
     Lua = {
       workspace = { checkThirdParty = false },
       telemetry = { enable = false },
@@ -536,6 +576,11 @@ require('fidget').setup()
 -- nvim-cmp setup
 local cmp = require 'cmp'
 local luasnip = require 'luasnip'
+
+-- Below snip, doesn't appear in my completion suggestions
+-- -- Latex-specific snippet; type frac and change to \frac{}{},
+-- -- moving curson inside the first bracket
+-- luasnip.parser.parse_snippet("frac", "\\frac{${1:numerator}}{${2:denominator}}$0")
 
 cmp.setup {
   -- MY ADDITION
@@ -580,7 +625,10 @@ cmp.setup {
   sources = {
     { name = 'nvim_lsp' },
     { name = 'luasnip' },
-    { name = 'cmp_tabnine' },
+    -- { name = 'cmp_tabnine' },
+    { name = 'buffer' },
+    { name = 'path' },
+    { name = 'copilot' },
   },
 }
 -- MY ADDITION
@@ -790,32 +838,73 @@ vim.keymap.set('n', '<leader>du', require('dapui').toggle)
 vim.keymap.set('n', '<leader>de', require('dapui').eval)
 vim.keymap.set('v', '<leader>de', require('dapui').eval)
 
+
 -- TABNINE
-require('tabnine').setup({
-  disable_auto_comment=true,
-  accept_keymap="<Tab>",
-  dismiss_keymap = "<C-]>",
-  debounce_ms = 800,
-  suggestion_color = {gui = "#808080", cterm = 244},
-  execlude_filetypes = {"TelescopePrompt"}
-})
-
-local tabnine = require('cmp_tabnine.config')
-
-tabnine:setup({
-	max_lines = 1000,
-	max_num_results = 20,
-	sort = true,
-	run_on_every_keystroke = true,
-	snippet_placeholder = '..',
-	ignored_file_types = {
-		-- default is not to ignore
-		-- uncomment to ignore in lua:
-		-- lua = true
-	},
-	show_prediction_strength = false
-})
+-- require('tabnine').setup({
+--   disable_auto_comment=true,
+--   accept_keymap="<Tab>",
+--   dismiss_keymap = "<C-]>",
+--   debounce_ms = 800,
+--   suggestion_color = {gui = "#808080", cterm = 244},
+--   execlude_filetypes = {"TelescopePrompt"}
+-- })
+--
+-- local tabnine = require('cmp_tabnine.config')
+--
+-- tabnine:setup({
+-- 	max_lines = 1000,
+-- 	max_num_results = 20,
+-- 	sort = true,
+-- 	run_on_every_keystroke = true,
+-- 	snippet_placeholder = '..',
+-- 	ignored_file_types = {
+-- 		-- default is not to ignore
+-- 		-- uncomment to ignore in lua:
+-- 		-- lua = true
+-- 	},
+-- 	show_prediction_strength = false
+-- })
 
 -- FTERM
 vim.keymap.set('n', '<A-\\>', '<CMD>lua require("FTerm").toggle()<CR>')
 vim.keymap.set('t', '<A-\\>', '<C-\\><C-n><CMD>lua require("FTerm").toggle()<CR>')
+
+-- VIMTEX
+
+-- This is necessary for VimTeX to load properly.
+vim.cmd('filetype plugin indent on')
+
+-- This enables Vim's and neovim's syntax-related features. 
+vim.cmd('syntax enable')
+
+-- Or with a generic interface.
+vim.g.vimtex_view_general_viewer = 'okular'
+vim.g.vimtex_view_general_options = '--unique file:@pdf\\#src:@line@tex'
+
+-- Select a jupyter cell marked with the "# %%" format
+local select_jupyter_cell = function()
+  local current_line = vim.fn.getline('.')
+  -- if on marker select up to next marker
+  if current_line:match('^# %%') then
+    vim.cmd('normal! V')
+    vim.cmd('/# %%\\|\\%$')
+  -- if not on marker go to marker above and select
+  else
+    vim.cmd('?# %%')
+    vim.cmd('normal! V')
+    vim.cmd('/# %%\\|\\%$')
+  end
+  -- don't select the bottom marker
+  if vim.fn.getline('.') == '# %%' then
+    vim.cmd('normal! k')
+  end
+  -- turn off search highlighting
+  vim.cmd('nohlsearch')
+end
+-- map function to 'vcc'
+vim.keymap.set('n', 'vcc', select_jupyter_cell, { silent = true })
+-- Map '<leader>cc' to run the select_jupyter_cell function and then trigger vim-slime
+vim.keymap.set('n', '<leader>cc', function()
+  select_jupyter_cell()
+  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('<C-c><C-c>', true, false, true), 'm', true)
+end, { silent = true })
