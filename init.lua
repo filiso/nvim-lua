@@ -903,8 +903,18 @@ local select_jupyter_cell = function()
 end
 -- map function to 'vcc'
 vim.keymap.set('n', 'vcc', select_jupyter_cell, { silent = true })
+
 -- Map '<leader>cc' to run the select_jupyter_cell function and then trigger vim-slime
 vim.keymap.set('n', '<leader>cc', function()
+  select_jupyter_cell()
+  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('<C-c><C-c>', true, false, true), 'm', true)
+end, { silent = true })
+
+-- Function to move to the next cell, select it, and run it
+vim.keymap.set('n', '<leader>cx', function()
+  -- Move to the next cell
+  vim.cmd('/# %%\\|\\%$')
+  -- Select and run the next cell
   select_jupyter_cell()
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('<C-c><C-c>', true, false, true), 'm', true)
 end, { silent = true })
