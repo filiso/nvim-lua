@@ -103,6 +103,29 @@ require('packer').startup(function(use)
     end
   }
 
+  -- -- Codeium (unofficial with nvim-cmp support)
+  -- use {
+  --   "Exafunction/codeium.nvim",
+  --   requires = {
+  --       "nvim-lua/plenary.nvim",
+  --       "hrsh7th/nvim-cmp",
+  --   },
+  --   config = function()
+  --       require("codeium").setup({
+  --       })
+  --   end
+  -- }
+
+  -- -- Codeium (official with virtual text)
+  -- -- use 'Exafunction/codeium.vim'
+  -- use {
+  --   'Exafunction/codeium.vim',
+  --   config = function ()
+  --     -- Change '<C-g>' here to any keycode you like.
+  --     vim.keymap.set('i', '<leader><Tab>', function () return vim.fn['codeium#Accept']() end, { expr = true, silent = true })
+  --   end
+  -- }
+
   -- Git related plugins
   use 'tpope/vim-fugitive'
   use 'tpope/vim-rhubarb'
@@ -167,7 +190,7 @@ require('packer').startup(function(use)
   -- Debugging
   use 'mfussenegger/nvim-dap'
   use 'mfussenegger/nvim-dap-python'
-  use 'rcarriga/nvim-dap-ui'
+  use { "rcarriga/nvim-dap-ui", requires = {"nvim-neotest/nvim-nio"} }
   use 'rcarriga/cmp-dap'
   -- use 'jayp0521/mason-nvim-dap.nvim'
 
@@ -523,6 +546,7 @@ local servers = {
       plugins = {
         pycodestyle = {
           -- ignore = {'E402'},
+          ignore = {'E501'},
           maxLineLength = 100
         },
         -- black = {
@@ -629,6 +653,7 @@ cmp.setup {
     { name = 'buffer' },
     { name = 'path' },
     { name = 'copilot' },
+    -- { name = "codeium" },
   },
 }
 -- MY ADDITION
@@ -649,17 +674,33 @@ vim.keymap.set('n', '<esc>', ':noh<return><esc>', { noremap = true })
 -- map 'kj' to <esc> because xps plus's touch esc is bad
 vim.keymap.set('i', 'kj', '<esc>', { noremap = true })
 vim.keymap.set('i', 'jk', '<esc>', { noremap = true })
-vim.keymap.set('i', 'lk', '<esc>', { noremap = true })
+-- vim.keymap.set('i', 'lk', '<esc>', { noremap = true })
 vim.keymap.set('n', 'q', '<esc>', { remap = true })
 vim.keymap.set('v', 'q', '<esc>', { remap = true })
 
 -- set ctrl-d and ctrl-u to 25% of screen hight instead of the default 50%
-vim.keymap.set('n', '<C-d>', (vim.api.nvim_win_get_height(0) / 4 - 1) .. '<C-d>')
-vim.keymap.set('n', '<C-u>', (vim.api.nvim_win_get_height(0) / 4 - 1) .. '<C-u>')
--- vim.keymap.set("n", "<C-d>", "<cmd>lua (vim.api.nvim_win_get_height(0) / 4 - 1) .. '<C-d>'<CR>", {expr = true})
--- vim.keymap.set('n', '<C-d>', "(vim.api.nvim_win_get_height(0) / 4 - 1) .. '<C-d>'<CR>", {expr = true })
--- vim.keymap.set('n', '<C-d>', (vim.api.nvim_win_get_height(0) / 4 - 1) .. '<C-d>', {expr = true })
--- vim.keymap.set('n', '<C-u>', (vim.api.nvim_win_get_height(0) / 4 - 1) .. '<C-u>', {expr = true })
+-- Function to scroll down by 25% of the window height
+vim.keymap.set('n', '<C-d>', function()
+  local win_height = vim.api.nvim_win_get_height(0)
+  local scroll_amount = math.floor(win_height / 4)
+  -- Move the cursor down by scroll_amount lines
+  vim.cmd('normal! ' .. scroll_amount .. 'j')
+  -- Center the screen if desired
+  -- vim.cmd('normal! zz')
+end, { noremap = true, silent = true })
+
+-- Function to scroll up by 25% of the window height
+vim.keymap.set('n', '<C-u>', function()
+  local win_height = vim.api.nvim_win_get_height(0)
+  local scroll_amount = math.floor(win_height / 4)
+  -- Move the cursor up by scroll_amount lines
+  vim.cmd('normal! ' .. scroll_amount .. 'k')
+  -- Center the screen if desired
+  -- vim.cmd('normal! zz')
+end, { noremap = true, silent = true })
+--
+-- vim.keymap.set('n', '<C-d>', (vim.api.nvim_win_get_height(0) / 4 - 1) .. '<C-d>')
+-- vim.keymap.set('n', '<C-u>', (vim.api.nvim_win_get_height(0) / 4 - 1) .. '<C-u>')
 
 -- VIM SLIME
 vim.g.slime_target = "tmux"
@@ -725,6 +766,8 @@ vim.keymap.set('n', '<leader>t', ':NvimTreeToggle<CR>')
 require('nvim-surround').setup()
 
 -- NVIM-DAP-PYTHON
+-- the way I understand this, the line below just refers to debugpy config
+-- the way init.lua dap config looks rn debugpy needs to be installed in every debugged env.
 require('dap-python').setup('~/opt/miniconda3/envs/debugpy/bin/python')
 -- replaced the above with
 -- require("mason-nvim-dap").setup({
@@ -838,7 +881,6 @@ vim.keymap.set('n', '<leader>du', require('dapui').toggle)
 vim.keymap.set('n', '<leader>de', require('dapui').eval)
 vim.keymap.set('v', '<leader>de', require('dapui').eval)
 
-
 -- TABNINE
 -- require('tabnine').setup({
 --   disable_auto_comment=true,
@@ -881,6 +923,13 @@ vim.cmd('syntax enable')
 vim.g.vimtex_view_general_viewer = 'okular'
 vim.g.vimtex_view_general_options = '--unique file:@pdf\\#src:@line@tex'
 
+-- COPY TO SYSTEM CLIPBOARD
+-- vim.keymap.set('v', '<leader>y', function()
+--     vim.cmd('w !wl-copy')
+--     vim.api.nvim_input('<CR>')
+-- end, {silent = true})
+
+-- JUPYTER CELL EXECUTION
 -- Select a jupyter cell marked with the "# %%" format
 local select_jupyter_cell = function()
   local current_line = vim.fn.getline('.')
