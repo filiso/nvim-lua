@@ -1069,21 +1069,21 @@ local gp_conf = {
     },
     {
       provider = "anthropic",
-      name = "ChatClaude-3-5-Sonnet",
-      chat = true,
-      command = false,
-      -- string with model name or table with model name and parameters
-      model = { model = "claude-3-5-sonnet-20240620", temperature = 0.8, top_p = 1 },
-      -- system prompt (use this to specify the persona/role of the AI)
-      system_prompt = require("gp.defaults").chat_system_prompt,
-    },
-    {
-      provider = "anthropic",
       name = "ChatClaude-3-7-Sonnet",
       chat = true,
       command = false,
       -- string with model name or table with model name and parameters
       model = { model = "claude-3-7-sonnet-latest", temperature = 0.8, top_p = 1 },
+      -- system prompt (use this to specify the persona/role of the AI)
+      system_prompt = require("gp.defaults").chat_system_prompt,
+    },
+    {
+      provider = "anthropic",
+      name = "ChatClaude-Sonnet-4",
+      chat = true,
+      command = false,
+      -- string with model name or table with model name and parameters
+      model = { model = "claude-sonnet-4-20250514", temperature = 0.8, top_p = 1 },
       -- system prompt (use this to specify the persona/role of the AI)
       system_prompt = require("gp.defaults").chat_system_prompt,
     },
@@ -1144,6 +1144,16 @@ local gp_conf = {
       command = true,
       -- string with model name or table with model name and parameters
       model = { model = "claude-3-7-sonnet-latest", temperature = 0.8, top_p = 1 },
+      -- system prompt (use this to specify the persona/role of the AI)
+      system_prompt = "Please return ONLY code snippets.\nSTART AND END YOUR ANSWER WITH:\n\n```",
+    },
+    {
+      provider = "anthropic",
+      name = "CodeClaude-Sonnet-4",
+      chat = false,
+      command = true,
+      -- string with model name or table with model name and parameters
+      model = { model = "claude-sonnet-4-20250514", temperature = 0.8, top_p = 1 },
       -- system prompt (use this to specify the persona/role of the AI)
       system_prompt = "Please return ONLY code snippets.\nSTART AND END YOUR ANSWER WITH:\n\n```",
     },
