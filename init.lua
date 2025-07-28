@@ -253,7 +253,18 @@ require("lazy").setup({
     event = "InsertEnter",
     config = function()
       require("copilot").setup({
-        suggestion = { enabled = false },
+        suggestion = {
+          enabled = false,
+          keymap = {
+            accept = "<M-p>",
+            accept_word = false,
+            accept_line = false,
+            next = "<M-[>",
+            prev = "<M-]>",
+            dismiss = false,
+          },
+
+        },
         panel = { enabled = false },
       })
     end,
