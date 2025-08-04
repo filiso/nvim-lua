@@ -255,8 +255,9 @@ require("lazy").setup({
       require("copilot").setup({
         suggestion = {
           enabled = false,
+          -- enabled = true,
           keymap = {
-            accept = "<M-p>",
+            accept = false,
             accept_word = false,
             accept_line = false,
             next = "<M-[>",
