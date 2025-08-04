@@ -359,6 +359,7 @@ require("lazy").setup({
     branch = '0.1.x',
     dependencies = {
       'nvim-lua/plenary.nvim',
+      -- select the agent to use gp.nvim 
       'undg/telescope-gp-agent-picker.nvim',
     }
   },
@@ -554,6 +555,7 @@ require('telescope').setup {
       },
       n = {
         ['q'] = require('telescope.actions').close,
+        ['dd'] = require('telescope.actions').delete_buffer,
       },
     },
   },
