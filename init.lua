@@ -15,23 +15,30 @@ if not (vim.uv or vim.loop).fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
--- disable netrw file explorer (advised by nvim-tree)
-vim.g.loaded_netrw = 1
-vim.g.loaded_netrwPlugin = 1
+-- VSCode detection for conditional loading
+local not_vscode = not vim.g.vscode
+
+-- disable netrw file explorer (advised by nvim-tree) - only when not in VSCode
+if not_vscode then
+  vim.g.loaded_netrw = 1
+  vim.g.loaded_netrwPlugin = 1
+end
 
 require("lazy").setup({
-  -- Mason package manager
+  -- Mason package manager (disabled in VSCode)
   {
     'williamboman/mason.nvim',
+    cond = not_vscode,
     build = ":MasonUpdate",
     config = function()
       require('mason').setup()
     end,
   },
 
-  -- Mason LSP config
+  -- Mason LSP config (disabled in VSCode)
   {
     'williamboman/mason-lspconfig.nvim',
+    cond = not_vscode,
     dependencies = { 'williamboman/mason.nvim' },
     config = function()
       require('mason-lspconfig').setup {
@@ -40,21 +47,26 @@ require("lazy").setup({
     end,
   },
 
-  -- Useful status updates for LSP
+  -- Useful status updates for LSP (disabled in VSCode)
   {
     'j-hui/fidget.nvim',
+    cond = not_vscode,
     tag = 'legacy',
     config = function()
       require("fidget").setup {}
     end,
   },
 
-  -- Additional lua configuration, makes nvim stuff amazing
-  'folke/neodev.nvim',
+  -- Additional lua configuration, makes nvim stuff amazing (disabled in VSCode)
+  {
+    'folke/neodev.nvim',
+    cond = not_vscode,
+  },
 
-  -- LSP Configuration & Plugins
+  -- LSP Configuration & Plugins (disabled in VSCode)
   {
     'neovim/nvim-lspconfig',
+    cond = not_vscode,
     dependencies = {
       'williamboman/mason.nvim',
       'williamboman/mason-lspconfig.nvim',
@@ -135,9 +147,10 @@ require("lazy").setup({
     end,
   },
 
-  -- Autocompletion
+  -- Autocompletion (disabled in VSCode)
   {
     'hrsh7th/nvim-cmp',
+    cond = not_vscode,
     dependencies = {
       'hrsh7th/cmp-nvim-lsp',
       'L3MON4D3/LuaSnip',
@@ -246,9 +259,10 @@ require("lazy").setup({
     end
   },
 
-  -- Github Copilot
+  -- Github Copilot (disabled in VSCode)
   {
     "zbirenbaum/copilot.lua",
+    cond = not_vscode,
     cmd = "Copilot",
     event = "InsertEnter",
     config = function()
@@ -272,15 +286,17 @@ require("lazy").setup({
   },
   {
     "zbirenbaum/copilot-cmp",
+    cond = not_vscode,
     dependencies = { "zbirenbaum/copilot.lua" },
     config = function ()
       require("copilot_cmp").setup()
     end
   },
 
-  -- Github Copilot integration
+  -- Github Copilot integration (disabled in VSCode)
   {
     "CopilotC-Nvim/CopilotChat.nvim",
+    cond = not_vscode,
     dependencies = {
       { "github/copilot.vim" }, -- or zbirenbaum/copilot.lua
       { "nvim-lua/plenary.nvim", branch = "master" }, -- for curl, log and async functions
@@ -321,9 +337,10 @@ require("lazy").setup({
   --   end
   -- },
 
-  -- LLM chat suppport in a Neovim-native style
+  -- LLM chat suppport in a Neovim-native style (disabled in VSCode)
   {
     "robitx/gp.nvim",
+    cond = not_vscode,
     config = function()
     end,
   },
@@ -333,6 +350,7 @@ require("lazy").setup({
   'tpope/vim-rhubarb',
   {
     'lewis6991/gitsigns.nvim',
+    cond = not_vscode,
     config = function()
       require('gitsigns').setup {
         signs = {
@@ -355,14 +373,15 @@ require("lazy").setup({
   'EdenEast/nightfox.nvim',
   'tiagovla/tokyodark.nvim',
 
-  'nvim-lualine/lualine.nvim', -- Fancier statusline
-  'lukas-reineke/indent-blankline.nvim', -- Add indentation guides even on blank lines
+  { 'nvim-lualine/lualine.nvim', cond = not_vscode }, -- Fancier statusline (disabled in VSCode)
+  { 'lukas-reineke/indent-blankline.nvim', cond = not_vscode }, -- Add indentation guides even on blank lines (disabled in VSCode)
   'numToStr/Comment.nvim', -- "gc" to comment visual regions/lines
   'tpope/vim-sleuth', -- Detect tabstop and shiftwidth automatically
 
-  -- Fuzzy Finder (files, lsp, etc)
+  -- Fuzzy Finder (files, lsp, etc) (disabled in VSCode)
   {
     'nvim-telescope/telescope.nvim',
+    cond = not_vscode,
     branch = '0.1.x',
     dependencies = {
       'nvim-lua/plenary.nvim',
@@ -371,11 +390,11 @@ require("lazy").setup({
     }
   },
 
-  -- Fuzzy Finder Algorithm which requires local dependencies to be built. Only load if `make` is available
-  { 'nvim-telescope/telescope-fzf-native.nvim', build = 'make', cond = function() return vim.fn.executable 'make' == 1 end },
+  -- Fuzzy Finder Algorithm which requires local dependencies to be built. Only load if `make` is available (disabled in VSCode)
+  { 'nvim-telescope/telescope-fzf-native.nvim', build = 'make', cond = not_vscode and vim.fn.executable 'make' == 1 },
 
-  -- Move seamlessly between vin and tmux panes using C+[hjkl] 
-  'christoomey/vim-tmux-navigator',
+  -- Move seamlessly between vin and tmux panes using C+[hjkl] (disabled in VSCode)
+  { 'christoomey/vim-tmux-navigator', cond = not_vscode },
 
   -- Run selected code in neighboring tmux pane e.g. ipython
   { 'jpalardy/vim-slime', ft = 'python' },
@@ -390,12 +409,13 @@ require("lazy").setup({
     end
   },
 
-  -- Floating terminal
-  "numToStr/FTerm.nvim",
+  -- Floating terminal (disabled in VSCode)
+  { "numToStr/FTerm.nvim", cond = not_vscode },
 
-  -- File explorer
+  -- File explorer (disabled in VSCode)
   {
     'nvim-tree/nvim-tree.lua',
+    cond = not_vscode,
     dependencies = {
       'nvim-tree/nvim-web-devicons', -- optional, for file icons
     },
@@ -412,12 +432,12 @@ require("lazy").setup({
     end
   },
 
-  -- Debugging
-  'mfussenegger/nvim-dap',
-  'mfussenegger/nvim-dap-python',
-  { "rcarriga/nvim-dap-ui", dependencies = {"nvim-neotest/nvim-nio"} },
-  'rcarriga/cmp-dap',
-  -- 'jayp0521/mason-nvim-dap.nvim',
+  -- Debugging (disabled in VSCode)
+  { 'mfussenegger/nvim-dap', cond = not_vscode },
+  { 'mfussenegger/nvim-dap-python', cond = not_vscode },
+  { "rcarriga/nvim-dap-ui", dependencies = {"nvim-neotest/nvim-nio"}, cond = not_vscode },
+  { 'rcarriga/cmp-dap', cond = not_vscode },
+  -- { 'jayp0521/mason-nvim-dap.nvim', cond = not_vscode },
 
 })
 
@@ -500,18 +520,20 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   pattern = '*',
 })
 
--- Set lualine as statusline
+-- Set lualine as statusline (only in terminal Neovim)
 -- See `:help lualine.txt`
-require('lualine').setup {
-  options = {
-    icons_enabled = false,
-    -- theme = 'onedark',
-    -- theme = 'material',
-    theme = 'tokyodark',
-    component_separators = '|',
-    section_separators = '',
-  },
-}
+if not_vscode then
+  require('lualine').setup {
+    options = {
+      icons_enabled = false,
+      -- theme = 'onedark',
+      -- theme = 'material',
+      theme = 'tokyodark',
+      component_separators = '|',
+      section_separators = '',
+    },
+  }
+end
 
 -- Enable Comment.nvim
 require('Comment').setup {
@@ -542,55 +564,59 @@ require('Comment').setup {
     },
 }
 
--- Enable `lukas-reineke/indent-blankline.nvim`
+-- Enable `lukas-reineke/indent-blankline.nvim` (only in terminal Neovim)
 -- See `:help indent_blankline.txt`
-require('ibl').setup {
-  indent = {
-    char = '┊',
+if not_vscode then
+  require('ibl').setup {
+    indent = {
+      char = '┊',
+    }
   }
-}
+end
 
 
--- [[ Configure Telescope ]]
+-- [[ Configure Telescope ]] (only in terminal Neovim)
 -- See `:help telescope` and `:help telescope.setup()`
-require('telescope').setup {
-  defaults = {
-    mappings = {
-      i = {
-        ['<C-u>'] = false,
-        ['<C-d>'] = false,
-      },
-      n = {
-        ['q'] = require('telescope.actions').close,
-        ['dd'] = require('telescope.actions').delete_buffer,
+if not_vscode then
+  require('telescope').setup {
+    defaults = {
+      mappings = {
+        i = {
+          ['<C-u>'] = false,
+          ['<C-d>'] = false,
+        },
+        n = {
+          ['q'] = require('telescope.actions').close,
+          ['dd'] = require('telescope.actions').delete_buffer,
+        },
       },
     },
-  },
-}
+  }
 
--- Additional features/extensions to load post-setup
-require('telescope').load_extension('gp_picker') -- Only include this if gp_picker defined as an available extension
+  -- Additional features/extensions to load post-setup
+  require('telescope').load_extension('gp_picker') -- Only include this if gp_picker defined as an available extension
 
--- Enable telescope fzf native, if installed
-pcall(require('telescope').load_extension, 'fzf')
+  -- Enable telescope fzf native, if installed
+  pcall(require('telescope').load_extension, 'fzf')
 
--- See `:help telescope.builtin`
-vim.keymap.set('n', '<leader>?', require('telescope.builtin').oldfiles, { desc = '[?] Find recently opened files' })
-vim.keymap.set('n', '<leader><space>', require('telescope.builtin').buffers, { desc = '[ ] Find existing buffers' })
-vim.keymap.set('n', '<leader>l', function()
-  -- You can pass additional configuration to telescope to change theme, layout, etc.
-  require('telescope.builtin').current_buffer_fuzzy_find(require('telescope.themes').get_dropdown {
-    winblend = 10,
-    previewer = false,
-  })
-end, { desc = '[/] Fuzzily search in current buffer]' })
+  -- See `:help telescope.builtin`
+  vim.keymap.set('n', '<leader>?', require('telescope.builtin').oldfiles, { desc = '[?] Find recently opened files' })
+  vim.keymap.set('n', '<leader><space>', require('telescope.builtin').buffers, { desc = '[ ] Find existing buffers' })
+  vim.keymap.set('n', '<leader>l', function()
+    -- You can pass additional configuration to telescope to change theme, layout, etc.
+    require('telescope.builtin').current_buffer_fuzzy_find(require('telescope.themes').get_dropdown {
+      winblend = 10,
+      previewer = false,
+    })
+  end, { desc = '[/] Fuzzily search in current buffer]' })
 
-vim.keymap.set('n', '<leader>sf', require('telescope.builtin').find_files, { desc = '[S]earch [F]iles' })
-vim.keymap.set('n', '<leader>sh', require('telescope.builtin').help_tags, { desc = '[S]earch [H]elp' })
-vim.keymap.set('n', '<leader>sw', require('telescope.builtin').grep_string, { desc = '[S]earch current [W]ord' })
-vim.keymap.set('n', '<leader>sg', require('telescope.builtin').live_grep, { desc = '[S]earch by [G]rep' })
-vim.keymap.set('n', '<leader>sd', require('telescope.builtin').diagnostics, { desc = '[S]earch [D]iagnostics' })
-vim.keymap.set('n', '<leader>sc', require('telescope.builtin').commands, { desc = '[S]earch [C]ommands' })
+  vim.keymap.set('n', '<leader>sf', require('telescope.builtin').find_files, { desc = '[S]earch [F]iles' })
+  vim.keymap.set('n', '<leader>sh', require('telescope.builtin').help_tags, { desc = '[S]earch [H]elp' })
+  vim.keymap.set('n', '<leader>sw', require('telescope.builtin').grep_string, { desc = '[S]earch current [W]ord' })
+  vim.keymap.set('n', '<leader>sg', require('telescope.builtin').live_grep, { desc = '[S]earch by [G]rep' })
+  vim.keymap.set('n', '<leader>sd', require('telescope.builtin').diagnostics, { desc = '[S]earch [D]iagnostics' })
+  vim.keymap.set('n', '<leader>sc', require('telescope.builtin').commands, { desc = '[S]earch [C]ommands' })
+end
 
 
 -- Diagnostic keymaps
@@ -599,72 +625,74 @@ vim.keymap.set('n', ']d', vim.diagnostic.goto_next)
 vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float)
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist)
 
--- nvim-cmp setup
-local cmp = require 'cmp'
-local luasnip = require 'luasnip'
+-- nvim-cmp setup (only in terminal Neovim)
+if not_vscode then
+  local cmp = require 'cmp'
+  local luasnip = require 'luasnip'
 
--- Below snip, doesn't appear in my completion suggestions
--- -- Latex-specific snippet; type frac and change to \frac{}{},
--- -- moving curson inside the first bracket
--- luasnip.parser.parse_snippet("frac", "\\frac{${1:numerator}}{${2:denominator}}$0")
+  -- Below snip, doesn't appear in my completion suggestions
+  -- -- Latex-specific snippet; type frac and change to \frac{}{},
+  -- -- moving curson inside the first bracket
+  -- luasnip.parser.parse_snippet("frac", "\\frac{${1:numerator}}{${2:denominator}}$0")
 
-cmp.setup {
-  -- MY ADDITION
-  enabled = function()
-    return vim.api.nvim_buf_get_option(0, "buftype") ~= "prompt"
-        or require("cmp_dap").is_dap_buffer()
-  end,
-  -- MY ADDITION END
-  snippet = {
-    expand = function(args)
-      luasnip.lsp_expand(args.body)
+  cmp.setup {
+    -- MY ADDITION
+    enabled = function()
+      return vim.api.nvim_buf_get_option(0, "buftype") ~= "prompt"
+          or require("cmp_dap").is_dap_buffer()
     end,
-  },
-  mapping = cmp.mapping.preset.insert {
-    ['<C-d>'] = cmp.mapping.scroll_docs(-4),
-    ['<C-f>'] = cmp.mapping.scroll_docs(4),
-    ['<C-Space>'] = cmp.mapping.complete(),
-    ['<CR>'] = cmp.mapping.confirm {
-      behavior = cmp.ConfirmBehavior.Replace,
-      -- select = true,
-      select = false,
+    -- MY ADDITION END
+    snippet = {
+      expand = function(args)
+        luasnip.lsp_expand(args.body)
+      end,
     },
-    ['<Tab>'] = cmp.mapping(function(fallback)
-      if cmp.visible() then
-        cmp.select_next_item()
-      elseif luasnip.expand_or_jumpable() then
-        luasnip.expand_or_jump()
-      else
-        fallback()
-      end
-    end, { 'i', 's' }),
-    ['<S-Tab>'] = cmp.mapping(function(fallback)
-      if cmp.visible() then
-        cmp.select_prev_item()
-      elseif luasnip.jumpable(-1) then
-        luasnip.jump(-1)
-      else
-        fallback()
-      end
-    end, { 'i', 's' }),
-  },
-  sources = {
-    { name = 'nvim_lsp' },
-    { name = 'luasnip' },
-    -- { name = 'cmp_tabnine' },
-    { name = 'buffer' },
-    { name = 'path' },
-    { name = 'copilot' },
-    -- { name = "codeium" },
-  },
-}
--- MY ADDITION
-require("cmp").setup.filetype({ "dap-repl", "dapui_watches", "dapui_hover" }, {
-  sources = {
-    { name = "dap" },
-  },
-})
--- MY ADDITION END
+    mapping = cmp.mapping.preset.insert {
+      ['<C-d>'] = cmp.mapping.scroll_docs(-4),
+      ['<C-f>'] = cmp.mapping.scroll_docs(4),
+      ['<C-Space>'] = cmp.mapping.complete(),
+      ['<CR>'] = cmp.mapping.confirm {
+        behavior = cmp.ConfirmBehavior.Replace,
+        -- select = true,
+        select = false,
+      },
+      ['<Tab>'] = cmp.mapping(function(fallback)
+        if cmp.visible() then
+          cmp.select_next_item()
+        elseif luasnip.expand_or_jumpable() then
+          luasnip.expand_or_jump()
+        else
+          fallback()
+        end
+      end, { 'i', 's' }),
+      ['<S-Tab>'] = cmp.mapping(function(fallback)
+        if cmp.visible() then
+          cmp.select_prev_item()
+        elseif luasnip.jumpable(-1) then
+          luasnip.jump(-1)
+        else
+          fallback()
+        end
+      end, { 'i', 's' }),
+    },
+    sources = {
+      { name = 'nvim_lsp' },
+      { name = 'luasnip' },
+      -- { name = 'cmp_tabnine' },
+      { name = 'buffer' },
+      { name = 'path' },
+      { name = 'copilot' },
+      -- { name = "codeium" },
+    },
+  }
+  -- MY ADDITION
+  require("cmp").setup.filetype({ "dap-repl", "dapui_watches", "dapui_hover" }, {
+    sources = {
+      { name = "dap" },
+    },
+  })
+  -- MY ADDITION END
+end
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
@@ -759,66 +787,71 @@ vim.cmd("hi HopNextKey guifg=#ff9900")
 vim.cmd("hi HopNextKey1 guifg=#ff9900")
 vim.cmd("hi HopNextKey2 guifg=#ff9900")
 
--- NVIM-TREE
-require("nvim-tree").setup({
-  sort_by = "case_sensitive",
-  view = {
-    adaptive_size = true,
-  },
-  on_attach = function(bufnr)
-    local api = require('nvim-tree.api')
-    local function opts(desc)
-      return { desc = 'nvim-tree: ' .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
-    end
-    -- Use default mappings
-    api.config.mappings.default_on_attach(bufnr)
-    -- Add custom mapping
-    vim.keymap.set('n', 'u', api.tree.change_root_to_parent, opts('Up'))
-  end,
-  renderer = {
-    group_empty = true,
-  },
-  filters = {
-    dotfiles = true,
-  },
-})
-vim.keymap.set('n', '<leader>t', ':NvimTreeToggle<CR>')
+-- NVIM-TREE (only in terminal Neovim)
+if not_vscode then
+  require("nvim-tree").setup({
+    sort_by = "case_sensitive",
+    view = {
+      adaptive_size = true,
+    },
+    on_attach = function(bufnr)
+      local api = require('nvim-tree.api')
+      local function opts(desc)
+        return { desc = 'nvim-tree: ' .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
+      end
+      -- Use default mappings
+      api.config.mappings.default_on_attach(bufnr)
+      -- Add custom mapping
+      vim.keymap.set('n', 'u', api.tree.change_root_to_parent, opts('Up'))
+    end,
+    renderer = {
+      group_empty = true,
+    },
+    filters = {
+      dotfiles = true,
+    },
+  })
+  vim.keymap.set('n', '<leader>t', ':NvimTreeToggle<CR>')
+end
 
 -- NVIM-SURROUND
 require('nvim-surround').setup()
 
--- NVIM-DAP-PYTHON
--- the way I understand this, the line below just refers to debugpy config
--- the way init.lua dap config looks rn debugpy needs to be installed in every debugged env.
-require('dap-python').setup('~/opt/miniconda3/envs/debugpy/bin/python')
--- replaced the above with
--- require("mason-nvim-dap").setup({
---     ensure_installed = { "python" }
--- })
+-- NVIM-DAP-PYTHON (only in terminal Neovim)
+if not_vscode then
+  -- the way I understand this, the line below just refers to debugpy config
+  -- the way init.lua dap config looks rn debugpy needs to be installed in every debugged env.
+  require('dap-python').setup('~/opt/miniconda3/envs/debugpy/bin/python')
+  -- replaced the above with
+  -- require("mason-nvim-dap").setup({
+  --     ensure_installed = { "python" }
+  -- })
 
--- NVIM-DAP
--- vim.keymap.set('n', '<F5>', ":lua require'dap'.continue()<CR>", { silent = true })
--- vim.keymap.set('n', '<leader>b', ":lua require'dap'.toggle_breakpoint()<CR>", { silent = true })
-vim.keymap.set('n', '<F5>', ":lua require'dap'.continue()<CR>") -- , { silent = true })
-vim.keymap.set('n', '<F6>', ":lua require'dap'.step_over()<CR>") -- , { silent = true })
-vim.keymap.set('n', '<F7>', ":lua require'dap'.step_into()<CR>") -- , { silent = true })
-vim.keymap.set('n', '<F8>', ":lua require'dap'.step_out()<CR>") -- , { silent = true })
-vim.keymap.set('n', '<F9>', ":lua require'dap'.terminate()<CR>") -- , { silent = true })
-vim.keymap.set('n', '<F10>', ":lua require'dap'.pause()<CR>") -- , { silent = true })
-vim.keymap.set('n', '<leader>b', ":lua require'dap'.toggle_breakpoint()<CR>") -- , { silent = true })
-vim.keymap.set('n', '<leader>B', [[:lua require'dap'.set_breakpoint(vim.fn.input('Breakpoint condition: '))<CR>]]) -- , { silent = true })
-vim.keymap.set('n', '<leader>dp', [[:lua require'dap'.set_breakpoint(nil, nil, vim.fn.input('Log point message: '))<CR>]]) -- , { silent = true })
-vim.keymap.set('n', '<leader>dr', ":lua require'dap'.repl.open()<CR>") -- , { silent = true })
-vim.keymap.set('n', '<leader>dl', ":lua require'dap'.run_last()<CR>") -- , { silent = true })
-vim.keymap.set('n', '<leader>dc', ":lua require'dap'.run_to_cursor()<CR>") -- , { silent = true })
--- nvim-dap-python keymaps
-vim.keymap.set('n', '<leader>dn', ":lua require('dap-python').test_method()<CR>") -- , { silent = true })
-vim.keymap.set('n', '<leader>df', ":lua require('dap-python').test_class()<CR>") -- , { silent = true })
-vim.keymap.set('v', '<leader>ds', [[<ESC>:lua require('dap-python').debug_selection()<CR>]]) -- , { silent = true })
+  -- NVIM-DAP
+  -- vim.keymap.set('n', '<F5>', ":lua require'dap'.continue()<CR>", { silent = true })
+  -- vim.keymap.set('n', '<leader>b', ":lua require'dap'.toggle_breakpoint()<CR>", { silent = true })
+  vim.keymap.set('n', '<F5>', ":lua require'dap'.continue()<CR>") -- , { silent = true })
+  vim.keymap.set('n', '<F6>', ":lua require'dap'.step_over()<CR>") -- , { silent = true })
+  vim.keymap.set('n', '<F7>', ":lua require'dap'.step_into()<CR>") -- , { silent = true })
+  vim.keymap.set('n', '<F8>', ":lua require'dap'.step_out()<CR>") -- , { silent = true })
+  vim.keymap.set('n', '<F9>', ":lua require'dap'.terminate()<CR>") -- , { silent = true })
+  vim.keymap.set('n', '<F10>', ":lua require'dap'.pause()<CR>") -- , { silent = true })
+  vim.keymap.set('n', '<leader>b', ":lua require'dap'.toggle_breakpoint()<CR>") -- , { silent = true })
+  vim.keymap.set('n', '<leader>B', [[:lua require'dap'.set_breakpoint(vim.fn.input('Breakpoint condition: '))<CR>]]) -- , { silent = true })
+  vim.keymap.set('n', '<leader>dp', [[:lua require'dap'.set_breakpoint(nil, nil, vim.fn.input('Log point message: '))<CR>]]) -- , { silent = true })
+  vim.keymap.set('n', '<leader>dr', ":lua require'dap'.repl.open()<CR>") -- , { silent = true })
+  vim.keymap.set('n', '<leader>dl', ":lua require'dap'.run_last()<CR>") -- , { silent = true })
+  vim.keymap.set('n', '<leader>dc', ":lua require'dap'.run_to_cursor()<CR>") -- , { silent = true })
+  -- nvim-dap-python keymaps
+  vim.keymap.set('n', '<leader>dn', ":lua require('dap-python').test_method()<CR>") -- , { silent = true })
+  vim.keymap.set('n', '<leader>df', ":lua require('dap-python').test_class()<CR>") -- , { silent = true })
+  vim.keymap.set('v', '<leader>ds', [[<ESC>:lua require('dap-python').debug_selection()<CR>]]) -- , { silent = true })
+end
 
--- NVIM-DAP-UI
--- require('dapui').setup()
-require("dapui").setup({
+-- NVIM-DAP-UI (only in terminal Neovim)
+if not_vscode then
+  -- require('dapui').setup()
+  require("dapui").setup({
   icons = { expanded = "", collapsed = "", current_frame = "" },
   mappings = {
     -- Use a table to apply multiple mappings
@@ -898,10 +931,11 @@ require("dapui").setup({
     max_type_length = nil, -- Can be integer or nil.
     max_value_lines = 100, -- Can be integer or nil.
   }
-})
-vim.keymap.set('n', '<leader>du', require('dapui').toggle)
-vim.keymap.set('n', '<leader>de', require('dapui').eval)
-vim.keymap.set('v', '<leader>de', require('dapui').eval)
+  })
+  vim.keymap.set('n', '<leader>du', require('dapui').toggle)
+  vim.keymap.set('n', '<leader>de', require('dapui').eval)
+  vim.keymap.set('v', '<leader>de', require('dapui').eval)
+end
 
 -- TABNINE
 -- require('tabnine').setup({
@@ -929,9 +963,11 @@ vim.keymap.set('v', '<leader>de', require('dapui').eval)
 -- 	show_prediction_strength = false
 -- })
 
--- FTERM
-vim.keymap.set('n', '<A-\\>', '<CMD>lua require("FTerm").toggle()<CR>')
-vim.keymap.set('t', '<A-\\>', '<C-\\><C-n><CMD>lua require("FTerm").toggle()<CR>')
+-- FTERM (only in terminal Neovim)
+if not_vscode then
+  vim.keymap.set('n', '<A-\\>', '<CMD>lua require("FTerm").toggle()<CR>')
+  vim.keymap.set('t', '<A-\\>', '<C-\\><C-n><CMD>lua require("FTerm").toggle()<CR>')
+end
 
 -- VIMTEX
 
@@ -991,9 +1027,9 @@ vim.keymap.set('n', '<leader>cx', function()
 end, { silent = true })
 
 
--- GP.NVIM
-
-local gp_conf = {
+-- GP.NVIM (only in terminal Neovim)
+if not_vscode then
+  local gp_conf = {
   -- For customization, refer to Install > Configuration in the Documentation/Readme
   providers = {
     openai = {
@@ -1297,6 +1333,7 @@ vim.keymap.set({"n"}, "<leader>ww", "<cmd>GpWhisper<cr>", keymapOptionsGp("Whisp
 vim.keymap.set("v", "<C-q>ww", ":<C-u>'<,'>GpWhisper<cr>", keymapOptionsGp("Visual Whisper"))
 vim.keymap.set("v", "<leader>ww", ":<C-u>'<,'>GpWhisper<cr>", keymapOptionsGp("Visual Whisper"))
 
--- Setup GP.NVIM-related plugins
--- telescope-gp-agent-picker
-vim.keymap.set('n', '<leader>fa', '<cmd>Telescope gp_picker agent<cr>', {desc = 'GP Agent Picker'})
+  -- Setup GP.NVIM-related plugins
+  -- telescope-gp-agent-picker
+  vim.keymap.set('n', '<leader>fa', '<cmd>Telescope gp_picker agent<cr>', {desc = 'GP Agent Picker'})
+end
