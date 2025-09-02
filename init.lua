@@ -288,6 +288,12 @@ require("lazy").setup({
     build = "make tiktoken", -- Only on MacOS or Linux
     opts = {
       -- See Configuration section for options
+      mappings = {
+        reset = {
+          normal = "<C-r>",
+          insert = "<C-r>",
+        }
+  }
     },
     -- See Commands section for default commands if you want to lazy load on them
   },
@@ -1074,6 +1080,17 @@ local gp_conf = {
     },
     {
       provider = "anthropic",
+      name = "ChatClaude-Opus-4.1",
+      chat = true,
+      command = false,
+      -- string with model name or table with model name and parameters
+      -- model = { model = "claude-opus-4-1-20250805", temperature = 0.8, top_p = 1 },
+      model = { model = "claude-opus-4-1-20250805", temperature = 0.8 },
+      -- system prompt (use this to specify the persona/role of the AI)
+      system_prompt = require("gp.defaults").chat_system_prompt,
+    },
+    {
+      provider = "anthropic",
       name = "ChatClaude-3-Haiku",
       chat = true,
       command = false,
@@ -1139,6 +1156,16 @@ local gp_conf = {
       command = true,
       -- string with model name or table with model name and parameters
       model = { model = "claude-sonnet-4-20250514", temperature = 0.8, top_p = 1 },
+      -- system prompt (use this to specify the persona/role of the AI)
+      system_prompt = "Please return ONLY code snippets.\nSTART AND END YOUR ANSWER WITH:\n\n```",
+    },
+    {
+      provider = "anthropic",
+      name = "CodeClaude-Opus-4.1",
+      chat = false,
+      command = true,
+      -- string with model name or table with model name and parameters
+      model = { model = "claude-opus-4-1-20250805", temperature = 0.8, top_p = 1 },
       -- system prompt (use this to specify the persona/role of the AI)
       system_prompt = "Please return ONLY code snippets.\nSTART AND END YOUR ANSWER WITH:\n\n```",
     },
