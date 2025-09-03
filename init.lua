@@ -102,7 +102,7 @@ vim.g.have_nerd_font = false
 vim.o.number = true
 -- You can also add relative line numbers, to help with jumping.
 --  Experiment for yourself to see if you like it!
--- vim.o.relativenumber = true
+vim.o.relativenumber = true
 
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.o.mouse = 'a'
@@ -172,6 +172,12 @@ vim.o.confirm = true
 -- Clear highlights on search when pressing <Esc> in normal mode
 --  See `:help hlsearch`
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
+
+-- Custom escape sequences for better UX
+vim.keymap.set('i', 'kj', '<esc>', { noremap = true })
+vim.keymap.set('i', 'jk', '<esc>', { noremap = true })
+vim.keymap.set('n', 'q', '<esc>', { remap = true })
+vim.keymap.set('v', 'q', '<esc>', { remap = true })
 
 -- Diagnostic keymaps
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
@@ -248,6 +254,51 @@ rtp:prepend(lazypath)
 require('lazy').setup({
   -- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
   'NMAC427/guess-indent.nvim', -- Detect tabstop and shiftwidth automatically
+
+  -- Move seamlessly between vim and tmux panes using C+[hjkl]
+  'christoomey/vim-tmux-navigator',
+
+  -- GitHub Copilot
+  {
+    "zbirenbaum/copilot.lua",
+    cmd = "Copilot",
+    event = "InsertEnter",
+    opts = {
+      suggestion = { enabled = false },
+      panel = { enabled = false },
+    },
+  },
+  {
+    "giuxtaposition/blink-cmp-copilot",
+    dependencies = { "zbirenbaum/copilot.lua" },
+  },
+
+  -- Faster motions with hop
+  {
+    'phaazon/hop.nvim',
+    branch = 'v2',
+    opts = {
+      keys = 'etovxqpdygfblzhckisuran'
+    },
+  },
+
+  -- Run selected code in neighboring tmux pane (e.g. ipython)
+  { 'jpalardy/vim-slime', ft = 'python' },
+
+  -- File explorer
+  {
+    'nvim-tree/nvim-tree.lua',
+    dependencies = { 'nvim-tree/nvim-web-devicons' },
+    opts = {
+      sort_by = "case_sensitive",
+      view = { adaptive_size = true },
+      renderer = { group_empty = true },
+      filters = { dotfiles = true },
+    },
+  },
+
+  -- Floating terminal
+  'numToStr/FTerm.nvim',
 
   -- NOTE: Plugins can also be added by using a table,
   -- with the first argument being the link and the following
@@ -673,7 +724,6 @@ require('lazy').setup({
       local servers = {
         -- clangd = {},
         -- gopls = {},
-        -- pyright = {},
         -- rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
         --
@@ -683,6 +733,9 @@ require('lazy').setup({
         -- But for many setups, the LSP (`ts_ls`) will work just fine
         -- ts_ls = {},
         --
+
+        -- Python LSP
+        pyright = {},
 
         lua_ls = {
           -- cmd = { ... },
@@ -716,6 +769,7 @@ require('lazy').setup({
       local ensure_installed = vim.tbl_keys(servers or {})
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
+        'black', -- Python formatter
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
@@ -769,7 +823,7 @@ require('lazy').setup({
       formatters_by_ft = {
         lua = { 'stylua' },
         -- Conform can also run multiple formatters sequentially
-        -- python = { "isort", "black" },
+        python = { "black" },
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
         -- javascript = { "prettierd", "prettier", stop_after_first = true },
@@ -854,9 +908,14 @@ require('lazy').setup({
       },
 
       sources = {
-        default = { 'lsp', 'path', 'snippets', 'lazydev' },
+        default = { 'lsp', 'path', 'snippets', 'lazydev', 'copilot' },
         providers = {
           lazydev = { module = 'lazydev.integrations.blink', score_offset = 100 },
+          copilot = { 
+            module = 'blink-cmp-copilot',
+            score_offset = 100,
+            async = true,
+          },
         },
       },
 
@@ -897,6 +956,9 @@ require('lazy').setup({
       vim.cmd.colorscheme 'tokyonight-night'
     end,
   },
+
+  -- Additional colorscheme
+  'tiagovla/tokyodark.nvim',
 
   -- Highlight todo, notes, etc in comments
   { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
@@ -944,7 +1006,7 @@ require('lazy').setup({
     main = 'nvim-treesitter.configs', -- Sets main module to use for opts
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
     opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' },
+      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'python', 'query', 'vim', 'vimdoc' },
       -- Autoinstall languages that are not installed
       auto_install = true,
       highlight = {
@@ -1011,6 +1073,87 @@ require('lazy').setup({
     },
   },
 })
+
+-- [[ Custom Configuration ]]
+
+-- Custom scroll amount (25% instead of 50%)
+vim.keymap.set('n', '<C-d>', function()
+  local win_height = vim.api.nvim_win_get_height(0)
+  local scroll_amount = math.floor(win_height / 4)
+  vim.cmd('normal! ' .. scroll_amount .. 'j')
+end, { noremap = true, silent = true })
+
+vim.keymap.set('n', '<C-u>', function()
+  local win_height = vim.api.nvim_win_get_height(0)
+  local scroll_amount = math.floor(win_height / 4)
+  vim.cmd('normal! ' .. scroll_amount .. 'k')
+end, { noremap = true, silent = true })
+
+-- Vim Slime configuration
+vim.g.slime_target = "tmux"
+vim.g.slime_python_ipython = 1
+
+-- Configure slime for tmux if in tmux session
+local function istmux()
+  return os.getenv("TMUX") ~= nil
+end
+
+if istmux() then
+  local tmux_socket = os.getenv("TMUX"):match("([^,]+)")
+  vim.g.slime_default_config = {
+    socket_name = tmux_socket,
+    target_pane = "{bottom-right}"
+  }
+  vim.g.slime_dont_ask_default = 1
+end
+
+-- Hop keymaps
+vim.keymap.set('', '<leader>h', function() require('hop').hint_words() end)
+vim.keymap.set('', '<leader>H', function() require('hop').hint_words({ current_line_only = true }) end)
+vim.keymap.set('', '<leader>j', function() require('hop').hint_char1({ current_line_only = true }) end)
+vim.keymap.set('', '<leader>J', function() require('hop').hint_char1() end)
+vim.keymap.set('', '<leader>k', function() require('hop').hint_lines() end)
+
+-- Hop colors
+vim.cmd("hi HopNextKey guifg=#ff9900")
+vim.cmd("hi HopNextKey1 guifg=#ff9900")
+vim.cmd("hi HopNextKey2 guifg=#ff9900")
+
+-- NvimTree toggle
+vim.keymap.set('n', '<leader>t', ':NvimTreeToggle<CR>')
+
+-- FTerm toggle
+vim.keymap.set('n', '<A-\\>', '<CMD>lua require("FTerm").toggle()<CR>')
+vim.keymap.set('t', '<A-\\>', '<C-\\><C-n><CMD>lua require("FTerm").toggle()<CR>')
+
+-- Jupyter cell execution
+local select_jupyter_cell = function()
+  local current_line = vim.fn.getline('.')
+  if current_line:match('^# %%') then
+    vim.cmd('normal! V')
+    vim.cmd('/# %%\\|\\%$')
+  else
+    vim.cmd('?# %%')
+    vim.cmd('normal! V')
+    vim.cmd('/# %%\\|\\%$')
+  end
+  if vim.fn.getline('.') == '# %%' then
+    vim.cmd('normal! k')
+  end
+  vim.cmd('nohlsearch')
+end
+
+vim.keymap.set('n', 'vcc', select_jupyter_cell, { silent = true })
+vim.keymap.set('n', '<leader>cc', function()
+  select_jupyter_cell()
+  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('<C-c><C-c>', true, false, true), 'm', true)
+end, { silent = true })
+
+vim.keymap.set('n', '<leader>cx', function()
+  vim.cmd('/# %%\\|\\%$')
+  select_jupyter_cell()
+  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('<C-c><C-c>', true, false, true), 'm', true)
+end, { silent = true })
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
