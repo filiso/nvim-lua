@@ -285,7 +285,7 @@ require('lazy').setup({
   -- Run selected code in neighboring tmux pane (e.g. ipython)
   { 'jpalardy/vim-slime', ft = 'python' },
 
-  -- File explorer
+  -- Tree-based file explorer
   {
     'nvim-tree/nvim-tree.lua',
     dependencies = { 'nvim-tree/nvim-web-devicons' },
@@ -295,6 +295,27 @@ require('lazy').setup({
       renderer = { group_empty = true },
       filters = { dotfiles = true },
     },
+  },
+
+  -- Directory-based file explorer
+  {
+    'stevearc/oil.nvim',
+    dependencies = { 'nvim-tree/nvim-web-devicons' },
+    config = function()
+      require('oil').setup {
+        columns = { 'icon' },
+        keymaps = {
+          ['<C-h>'] = false,
+        },
+        view_options = {
+          show_hidden = true,
+        },
+      }
+      -- Open parent direcory in current window
+      vim.keymap.set('n', '-', '<cmd>Oil<cr>', { desc = 'Open parent directory' })
+      -- Open parent direcory in floating window
+      vim.keymap.set('n', '<leader>-', require('oil').toggle_float, { desc = 'Open floating parent directory' })
+    end,
   },
 
   -- Floating terminal
