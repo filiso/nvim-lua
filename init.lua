@@ -260,17 +260,17 @@ require('lazy').setup({
 
   -- GitHub Copilot
   {
-    "zbirenbaum/copilot.lua",
-    cmd = "Copilot",
-    event = "InsertEnter",
+    'zbirenbaum/copilot.lua',
+    cmd = 'Copilot',
+    event = 'InsertEnter',
     opts = {
       suggestion = { enabled = false },
       panel = { enabled = false },
     },
   },
   {
-    "giuxtaposition/blink-cmp-copilot",
-    dependencies = { "zbirenbaum/copilot.lua" },
+    'giuxtaposition/blink-cmp-copilot',
+    dependencies = { 'zbirenbaum/copilot.lua' },
   },
 
   -- Faster motions with hop
@@ -278,7 +278,7 @@ require('lazy').setup({
     'phaazon/hop.nvim',
     branch = 'v2',
     opts = {
-      keys = 'etovxqpdygfblzhckisuran'
+      keys = 'etovxqpdygfblzhckisuran',
     },
   },
 
@@ -290,7 +290,7 @@ require('lazy').setup({
     'nvim-tree/nvim-tree.lua',
     dependencies = { 'nvim-tree/nvim-web-devicons' },
     opts = {
-      sort_by = "case_sensitive",
+      sort_by = 'case_sensitive',
       view = { adaptive_size = true },
       renderer = { group_empty = true },
       filters = { dotfiles = true },
@@ -489,13 +489,13 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
 
       -- Slightly advanced example of overriding default behavior and theme
-      vim.keymap.set('n', '<leader>/', function()
+      vim.keymap.set('n', '<leader>l', function()
         -- You can pass additional configuration to Telescope to change the theme, layout, etc.
         builtin.current_buffer_fuzzy_find(require('telescope.themes').get_dropdown {
           winblend = 10,
           previewer = false,
         })
-      end, { desc = '[/] Fuzzily search in current buffer' })
+      end, { desc = '[L] Fuzzily search in current buffer' })
 
       -- It's also possible to pass additional configuration options.
       --  See `:help telescope.builtin.live_grep()` for information about particular keys
@@ -769,7 +769,7 @@ require('lazy').setup({
       local ensure_installed = vim.tbl_keys(servers or {})
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
-        'black', -- Python formatter
+        'black', -- Python formatter - install manually if needed
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
@@ -823,7 +823,7 @@ require('lazy').setup({
       formatters_by_ft = {
         lua = { 'stylua' },
         -- Conform can also run multiple formatters sequentially
-        python = { "black" },
+        -- python = { "black" }, -- Uncomment when black is available
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
         -- javascript = { "prettierd", "prettier", stop_after_first = true },
@@ -911,7 +911,7 @@ require('lazy').setup({
         default = { 'lsp', 'path', 'snippets', 'lazydev', 'copilot' },
         providers = {
           lazydev = { module = 'lazydev.integrations.blink', score_offset = 100 },
-          copilot = { 
+          copilot = {
             module = 'blink-cmp-copilot',
             score_offset = 100,
             async = true,
@@ -995,6 +995,19 @@ require('lazy').setup({
       statusline.section_location = function()
         return '%2l:%-2v'
       end
+
+      -- Simple and easy commenting
+      local comment = require 'mini.comment'
+      comment.setup {
+        options = {
+          custom_commentstring = nil,
+        },
+        mappings = {
+          comment_line = '<leader>/',
+          comment_visual = '<leader>/',
+          textobject = 'gc',
+        },
+      }
 
       -- ... and there is more!
       --  Check out: https://github.com/echasnovski/mini.nvim
@@ -1090,34 +1103,44 @@ vim.keymap.set('n', '<C-u>', function()
 end, { noremap = true, silent = true })
 
 -- Vim Slime configuration
-vim.g.slime_target = "tmux"
+vim.g.slime_target = 'tmux'
 vim.g.slime_python_ipython = 1
 
 -- Configure slime for tmux if in tmux session
 local function istmux()
-  return os.getenv("TMUX") ~= nil
+  return os.getenv 'TMUX' ~= nil
 end
 
 if istmux() then
-  local tmux_socket = os.getenv("TMUX"):match("([^,]+)")
+  local tmux_socket = os.getenv('TMUX'):match '([^,]+)'
   vim.g.slime_default_config = {
     socket_name = tmux_socket,
-    target_pane = "{bottom-right}"
+    target_pane = '{bottom-right}',
   }
   vim.g.slime_dont_ask_default = 1
 end
 
 -- Hop keymaps
-vim.keymap.set('', '<leader>h', function() require('hop').hint_words() end)
-vim.keymap.set('', '<leader>H', function() require('hop').hint_words({ current_line_only = true }) end)
-vim.keymap.set('', '<leader>j', function() require('hop').hint_char1({ current_line_only = true }) end)
-vim.keymap.set('', '<leader>J', function() require('hop').hint_char1() end)
-vim.keymap.set('', '<leader>k', function() require('hop').hint_lines() end)
+vim.keymap.set('', '<leader>h', function()
+  require('hop').hint_words()
+end)
+vim.keymap.set('', '<leader>H', function()
+  require('hop').hint_words { current_line_only = true }
+end)
+vim.keymap.set('', '<leader>j', function()
+  require('hop').hint_char1 { current_line_only = true }
+end)
+vim.keymap.set('', '<leader>J', function()
+  require('hop').hint_char1()
+end)
+vim.keymap.set('', '<leader>k', function()
+  require('hop').hint_lines()
+end)
 
 -- Hop colors
-vim.cmd("hi HopNextKey guifg=#ff9900")
-vim.cmd("hi HopNextKey1 guifg=#ff9900")
-vim.cmd("hi HopNextKey2 guifg=#ff9900")
+vim.cmd 'hi HopNextKey guifg=#ff9900'
+vim.cmd 'hi HopNextKey1 guifg=#ff9900'
+vim.cmd 'hi HopNextKey2 guifg=#ff9900'
 
 -- NvimTree toggle
 vim.keymap.set('n', '<leader>t', ':NvimTreeToggle<CR>')
@@ -1128,19 +1151,19 @@ vim.keymap.set('t', '<A-\\>', '<C-\\><C-n><CMD>lua require("FTerm").toggle()<CR>
 
 -- Jupyter cell execution
 local select_jupyter_cell = function()
-  local current_line = vim.fn.getline('.')
-  if current_line:match('^# %%') then
-    vim.cmd('normal! V')
-    vim.cmd('/# %%\\|\\%$')
+  local current_line = vim.fn.getline '.'
+  if current_line:match '^# %%' then
+    vim.cmd 'normal! V'
+    vim.cmd '/# %%\\|\\%$'
   else
-    vim.cmd('?# %%')
-    vim.cmd('normal! V')
-    vim.cmd('/# %%\\|\\%$')
+    vim.cmd '?# %%'
+    vim.cmd 'normal! V'
+    vim.cmd '/# %%\\|\\%$'
   end
-  if vim.fn.getline('.') == '# %%' then
-    vim.cmd('normal! k')
+  if vim.fn.getline '.' == '# %%' then
+    vim.cmd 'normal! k'
   end
-  vim.cmd('nohlsearch')
+  vim.cmd 'nohlsearch'
 end
 
 vim.keymap.set('n', 'vcc', select_jupyter_cell, { silent = true })
@@ -1150,7 +1173,7 @@ vim.keymap.set('n', '<leader>cc', function()
 end, { silent = true })
 
 vim.keymap.set('n', '<leader>cx', function()
-  vim.cmd('/# %%\\|\\%$')
+  vim.cmd '/# %%\\|\\%$'
   select_jupyter_cell()
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('<C-c><C-c>', true, false, true), 'm', true)
 end, { silent = true })
