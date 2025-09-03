@@ -449,6 +449,9 @@ require('lazy').setup({
         end,
       },
       { 'nvim-telescope/telescope-ui-select.nvim' },
+      
+      -- gp.nvim agent picker for telescope
+      'undg/telescope-gp-agent-picker.nvim',
 
       -- Useful for getting pretty icons, but requires a Nerd Font.
       { 'nvim-tree/nvim-web-devicons', enabled = vim.g.have_nerd_font },
@@ -495,6 +498,7 @@ require('lazy').setup({
       -- Enable Telescope extensions if they are installed
       pcall(require('telescope').load_extension, 'fzf')
       pcall(require('telescope').load_extension, 'ui-select')
+      pcall(require('telescope').load_extension, 'gp_picker')
 
       -- See `:help telescope.builtin`
       local builtin = require 'telescope.builtin'
@@ -1060,6 +1064,236 @@ require('lazy').setup({
     --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
   },
 
+  -- LLM chat support in a Neovim-native style
+  {
+    "robitx/gp.nvim",
+    config = function()
+      local gp_conf = {
+        -- For customization, refer to Install > Configuration in the Documentation/Readme
+        providers = {
+          openai = {
+            endpoint = "https://api.openai.com/v1/chat/completions",
+            secret = os.getenv("OPENAI_API_KEY"),
+          },
+          copilot = {
+            endpoint = "https://api.githubcopilot.com/chat/completions",
+            secret = {
+              "bash",
+              "-c",
+              "cat ~/.config/github-copilot/hosts.json | sed -e 's/.*oauth_token...//;s/\".*//'",
+            },
+          },
+          anthropic = {
+            endpoint = "https://api.anthropic.com/v1/messages",
+            secret = os.getenv("ANTHROPIC_API_KEY"),
+          },
+        },
+
+        agents = {
+          {
+            name = "ExampleDisabledAgent",
+            disable = true,
+          },
+          {
+            name = "ChatGPT4o",
+            chat = true,
+            command = false,
+            -- string with model name or table with model name and parameters
+            model = { model = "gpt-4o", temperature = 1.1, top_p = 1 },
+            -- system prompt (use this to specify the persona/role of the AI)
+            system_prompt = require("gp.defaults").chat_system_prompt,
+          },
+          {
+            provider = "openai",
+            name = "ChatGPT4o-mini",
+            chat = true,
+            command = false,
+            -- string with model name or table with model name and parameters
+            model = { model = "gpt-4o-mini", temperature = 1.1, top_p = 1 },
+            -- system prompt (use this to specify the persona/role of the AI)
+            system_prompt = require("gp.defaults").chat_system_prompt,
+          },
+          {
+            provider = "openai",
+            name = "ChatChatGPT4o",
+            chat = true,
+            command = false,
+            -- string with model name or table with model name and parameters
+            model = { model = "chatgpt-4o-latest", temperature = 1.1, top_p = 1 },
+            -- system prompt (use this to specify the persona/role of the AI)
+            system_prompt = require("gp.defaults").chat_system_prompt,
+          },
+          {
+            provider = "copilot",
+            name = "ChatCopilot",
+            chat = true,
+            command = false,
+            -- string with model name or table with model name and parameters
+            model = { model = "gpt-4o", temperature = 1.1, top_p = 1 },
+            -- system prompt (use this to specify the persona/role of the AI)
+            system_prompt = require("gp.defaults").chat_system_prompt,
+          },
+          {
+            provider = "anthropic",
+            name = "ChatClaude-3-7-Sonnet",
+            chat = true,
+            command = false,
+            -- string with model name or table with model name and parameters
+            model = { model = "claude-3-7-sonnet-latest", temperature = 0.8, top_p = 1 },
+            -- system prompt (use this to specify the persona/role of the AI)
+            system_prompt = require("gp.defaults").chat_system_prompt,
+          },
+          {
+            provider = "anthropic",
+            name = "ChatClaude-Sonnet-4",
+            chat = true,
+            command = false,
+            -- string with model name or table with model name and parameters
+            model = { model = "claude-sonnet-4-20250514", temperature = 0.8, top_p = 1 },
+            -- system prompt (use this to specify the persona/role of the AI)
+            system_prompt = require("gp.defaults").chat_system_prompt,
+          },
+          {
+            provider = "anthropic",
+            name = "ChatClaude-Opus-4.1",
+            chat = true,
+            command = false,
+            -- string with model name or table with model name and parameters
+            model = { model = "claude-opus-4-1-20250805", temperature = 0.8 },
+            -- system prompt (use this to specify the persona/role of the AI)
+            system_prompt = require("gp.defaults").chat_system_prompt,
+          },
+          {
+            provider = "anthropic",
+            name = "ChatClaude-3-Haiku",
+            chat = true,
+            command = false,
+            -- string with model name or table with model name and parameters
+            model = { model = "claude-3-haiku-20240307", temperature = 0.8, top_p = 1 },
+            -- system prompt (use this to specify the persona/role of the AI)
+            system_prompt = require("gp.defaults").chat_system_prompt,
+          },
+          {
+            provider = "openai",
+            name = "CodeGPT4o",
+            chat = false,
+            command = true,
+            -- string with model name or table with model name and parameters
+            model = { model = "gpt-4o", temperature = 0.8, top_p = 1 },
+            -- system prompt (use this to specify the persona/role of the AI)
+            system_prompt = require("gp.defaults").code_system_prompt,
+          },
+          {
+            provider = "openai",
+            name = "CodeGPT4o-mini",
+            chat = false,
+            command = true,
+            -- string with model name or table with model name and parameters
+            model = { model = "gpt-4o-mini", temperature = 0.7, top_p = 1 },
+            -- system prompt (use this to specify the persona/role of the AI)
+            system_prompt = "Please return ONLY code snippets.\nSTART AND END YOUR ANSWER WITH:\n\n```",
+          },
+          {
+            provider = "openai",
+            name = "CodeChatGPT4o",
+            chat = false,
+            command = true,
+            -- string with model name or table with model name and parameters
+            model = { model = "chatgpt-4o-latest", temperature = 0.8, top_p = 1 },
+            -- system prompt (use this to specify the persona/role of the AI)
+            system_prompt = require("gp.defaults").code_system_prompt,
+          },
+          {
+            provider = "copilot",
+            name = "CodeCopilot",
+            chat = false,
+            command = true,
+            -- string with model name or table with model name and parameters
+            model = { model = "gpt-4o", temperature = 0.8, top_p = 1, n = 1 },
+            -- system prompt (use this to specify the persona/role of the AI)
+            system_prompt = require("gp.defaults").code_system_prompt,
+          },
+          {
+            provider = "anthropic",
+            name = "CodeClaude-3-7-Sonnet",
+            chat = false,
+            command = true,
+            -- string with model name or table with model name and parameters
+            model = { model = "claude-3-7-sonnet-latest", temperature = 0.8, top_p = 1 },
+            -- system prompt (use this to specify the persona/role of the AI)
+            system_prompt = "Please return ONLY code snippets.\nSTART AND END YOUR ANSWER WITH:\n\n```",
+          },
+          {
+            provider = "anthropic",
+            name = "CodeClaude-Sonnet-4",
+            chat = false,
+            command = true,
+            -- string with model name or table with model name and parameters
+            model = { model = "claude-sonnet-4-20250514", temperature = 0.8, top_p = 1 },
+            -- system prompt (use this to specify the persona/role of the AI)
+            system_prompt = "Please return ONLY code snippets.\nSTART AND END YOUR ANSWER WITH:\n\n```",
+          },
+          {
+            provider = "anthropic",
+            name = "CodeClaude-Opus-4.1",
+            chat = false,
+            command = true,
+            -- string with model name or table with model name and parameters
+            model = { model = "claude-opus-4-1-20250805", temperature = 0.8, top_p = 1 },
+            -- system prompt (use this to specify the persona/role of the AI)
+            system_prompt = "Please return ONLY code snippets.\nSTART AND END YOUR ANSWER WITH:\n\n```",
+          },
+        },
+
+        -- directory for storing chat files
+        chat_dir = "/home/fs/data/opt_files/gp.nvim/chats",
+
+        -- image generation settings
+        image = {
+          store_dir = "/home/fs/data/opt_files/gp.nvim/images",
+        },
+
+        -- (be careful to choose something which will work across specified modes)
+        chat_shortcut_respond = { modes = { "n", "i", "v", "x" }, shortcut = "<C-q><C-q>" },
+        chat_shortcut_delete = { modes = { "n", "i", "v", "x" }, shortcut = "<C-q>d" },
+        chat_shortcut_stop = { modes = { "n", "i", "v", "x" }, shortcut = "<C-q>s" },
+        chat_shortcut_new = { modes = { "n", "i", "v", "x" }, shortcut = "<C-q>c" },
+
+        whisper = {
+          -- you can disable whisper completely by whisper = {disable = true}
+          disable = false,
+
+          -- OpenAI audio/transcriptions api endpoint to transcribe audio to text
+          endpoint = "https://api.openai.com/v1/audio/transcriptions",
+          -- directory for storing whisper files
+          store_dir = (os.getenv("TMPDIR") or os.getenv("TEMP") or "/tmp") .. "/gp_whisper",
+          -- multiplier of RMS level dB for threshold used by sox to detect silence vs speech
+          -- decibels are negative, the recording is normalized to -3dB =>
+          -- increase this number to pick up more (weaker) sounds as possible speech
+          -- decrease this number to pick up only louder sounds as possible speech
+          -- you can disable silence trimming by setting this a very high number (like 1000.0)
+          silence = "1.75",
+          -- whisper tempo (1.0 is normal speed)
+          tempo = "1.75",
+          -- The language of the input audio, in ISO-639-1 format.
+          language = "en",
+          -- command to use for recording can be nil (unset) for automatic selection
+          -- string ("sox", "arecord", "ffmpeg") or table with command and arguments:
+          -- sox is the most universal, but can have start/end cropping issues caused by latency
+          -- arecord is linux only, but has no cropping issues and is faster
+          -- ffmpeg in the default configuration is macos only, but can be used on any platform
+          -- (see https://trac.ffmpeg.org/wiki/Capture/Desktop for more info)
+          -- below is the default configuration for all three commands:
+          -- whisper_rec_cmd = {"sox", "-c", "1", "--buffer", "32", "-d", "rec.wav", "trim", "0", "60:00"},
+          -- whisper_rec_cmd = {"arecord", "-c", "1", "-f", "S16_LE", "-r", "48000", "-d", "3600", "rec.wav"},
+          -- whisper_rec_cmd = {"ffmpeg", "-y", "-f", "avfoundation", "-i", ":0", "-t", "3600", "rec.wav"},
+          rec_cmd = nil,
+        },
+      }
+      require("gp").setup(gp_conf)
+    end,
+  },
+
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
   -- place them in the correct locations.
@@ -1198,6 +1432,86 @@ vim.keymap.set('n', '<leader>cx', function()
   select_jupyter_cell()
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('<C-c><C-c>', true, false, true), 'm', true)
 end, { silent = true })
+
+-- [[ GP.NVIM Keymaps ]]
+-- Setup shortcuts here (see Usage > Shortcuts in the Documentation/Readme)
+local function keymapOptionsGp(desc)
+    return {
+        noremap = true,
+        silent = true,
+        nowait = true,
+        desc = "GPT prompt " .. desc,
+    }
+end
+
+-- Chat commands
+-- many commands have both a <C-q> and <leader>q binding on purpose
+-- GpChatNew
+vim.keymap.set({"n", "i"}, "<C-q>n", "<cmd>GpChatNew<cr>", keymapOptionsGp("New Chat"))
+vim.keymap.set({"n"}, "<leader>qn", "<cmd>GpChatNew<cr>", keymapOptionsGp("New Chat"))
+vim.keymap.set("v", "<C-q>n", ":<C-u>'<,'>GpChatNew<cr>", keymapOptionsGp("Visual Chat New"))
+vim.keymap.set("v", "<leader>qn", ":<C-u>'<,'>GpChatNew<cr>", keymapOptionsGp("Visual Chat New"))
+-- GpChatToggle
+vim.keymap.set({"n", "i"}, "<C-q>t", "<cmd>GpChatToggle<cr>", keymapOptionsGp("Toggle Chat"))
+vim.keymap.set({"n"}, "<leader>qt", "<cmd>GpChatToggle<cr>", keymapOptionsGp("Toggle Chat"))
+vim.keymap.set("v", "<C-q>t", ":<C-u>'<,'>GpChatToggle<cr>", keymapOptionsGp("Visual Toggle Chat"))
+vim.keymap.set("v", "<leader>qt", ":<C-u>'<,'>GpChatToggle<cr>", keymapOptionsGp("Visual Toggle Chat"))
+-- GpChatFinder
+vim.keymap.set({"n", "i"}, "<C-q>f", "<cmd>GpChatFinder<cr>", keymapOptionsGp("Chat Finder"))
+vim.keymap.set({"n"}, "<leader>qf", "<cmd>GpChatFinder<cr>", keymapOptionsGp("Chat Finder"))
+-- GpChatPaste
+vim.keymap.set("v", "<C-q>p", ":<C-u>'<,'>GpChatPaste<cr>", keymapOptionsGp("Visual Chat Paste"))
+vim.keymap.set("v", "<leader>qp", ":<C-u>'<,'>GpChatPaste<cr>", keymapOptionsGp("Visual Chat Paste"))
+-- GpChatNew split, vsplit, tabnew
+vim.keymap.set({ "n", "i" }, "<C-q><C-x>", "<cmd>GpChatNew split<cr>", keymapOptionsGp("New Chat split"))
+vim.keymap.set({ "n"}, "<leader>qx", "<cmd>GpChatNew split<cr>", keymapOptionsGp("New Chat split"))
+vim.keymap.set({ "n", "i" }, "<C-q><C-v>", "<cmd>GpChatNew vsplit<cr>", keymapOptionsGp("New Chat vsplit"))
+vim.keymap.set({ "n"}, "<leader>qv", "<cmd>GpChatNew vsplit<cr>", keymapOptionsGp("New Chat vsplit"))
+vim.keymap.set({ "n", "i" }, "<C-q><C-,>", "<cmd>GpChatNew tabnew<cr>", keymapOptionsGp("New Chat tabnew"))
+vim.keymap.set({ "n"}, "<leader>q,", "<cmd>GpChatNew tabnew<cr>", keymapOptionsGp("New Chat tabnew"))
+vim.keymap.set("v", "<C-q><C-x>", ":<C-u>'<,'>GpChatNew split<cr>", keymapOptionsGp("Visual Chat New split"))
+vim.keymap.set("v", "<leader>qx", ":<C-u>'<,'>GpChatNew split<cr>", keymapOptionsGp("Visual Chat New split"))
+vim.keymap.set("v", "<C-q><C-v>", ":<C-u>'<,'>GpChatNew vsplit<cr>", keymapOptionsGp("Visual Chat New vsplit"))
+vim.keymap.set("v", "<leader>qv", ":<C-u>'<,'>GpChatNew vsplit<cr>", keymapOptionsGp("Visual Chat New vsplit"))
+vim.keymap.set("v", "<C-q><C-,>", ":<C-u>'<,'>GpChatNew tabnew<cr>", keymapOptionsGp("Visual Chat New tabnew"))
+vim.keymap.set("v", "<leader>q,", ":<C-u>'<,'>GpChatNew tabnew<cr>", keymapOptionsGp("Visual Chat New tabnew"))
+
+-- Prompt commands
+-- GpRewrite, GpAppend, GpPrepend
+vim.keymap.set({"n", "i"}, "<C-q>e", "<cmd>GpRewrite<cr>", keymapOptionsGp("Inline Rewrite"))
+vim.keymap.set({"n"}, "<leader>qe", "<cmd>GpRewrite<cr>", keymapOptionsGp("Inline Rewrite"))
+vim.keymap.set({"n", "i"}, "<C-q>a", "<cmd>GpAppend<cr>", keymapOptionsGp("Append (after)"))
+vim.keymap.set({"n"}, "<leader>qa", "<cmd>GpAppend<cr>", keymapOptionsGp("Append (after)"))
+vim.keymap.set({"n", "i"}, "<C-q>z", "<cmd>GpPrepend<cr>", keymapOptionsGp("Prepend (before)"))
+vim.keymap.set({"n"}, "<leader>qz", "<cmd>GpPrepend<cr>", keymapOptionsGp("Prepend (before)"))
+vim.keymap.set("v", "<C-q>e", ":<C-u>'<,'>GpRewrite<cr>", keymapOptionsGp("Visual Rewrite"))
+vim.keymap.set("v", "<leader>qe", ":<C-u>'<,'>GpRewrite<cr>", keymapOptionsGp("Visual Rewrite"))
+vim.keymap.set("v", "<C-q>a", ":<C-u>'<,'>GpAppend<cr>", keymapOptionsGp("Visual Append (after)"))
+vim.keymap.set("v", "<leader>qa", ":<C-u>'<,'>GpAppend<cr>", keymapOptionsGp("Visual Append (after)"))
+vim.keymap.set("v", "<C-q>z", ":<C-u>'<,'>GpPrepend<cr>", keymapOptionsGp("Visual Prepend (before)"))
+vim.keymap.set("v", "<leader>qz", ":<C-u>'<,'>GpPrepend<cr>", keymapOptionsGp("Visual Prepend (before)"))
+
+-- GpNew, GpVnew
+vim.keymap.set({"n", "i"}, "<C-q>wx", "<cmd>GpNew<cr>", keymapOptionsGp("GpNew"))
+vim.keymap.set({"n", "i"}, "<leader>qwx", "<cmd>GpNew<cr>", keymapOptionsGp("GpNew"))
+vim.keymap.set({"n", "i"}, "<C-q>wv", "<cmd>GpVnew<cr>", keymapOptionsGp("GpVnew"))
+vim.keymap.set({"n", "i"}, "<leader>qwv", "<cmd>GpVnew<cr>", keymapOptionsGp("GpVnew"))
+vim.keymap.set("v", "<C-q>wx", ":<C-u>'<,'>GpNew<cr>", keymapOptionsGp("Visual GpNew"))
+vim.keymap.set("v", "<leader>qwx", ":<C-u>'<,'>GpNew<cr>", keymapOptionsGp("Visual GpNew"))
+vim.keymap.set("v", "<C-q>wv", ":<C-u>'<,'>GpVnew<cr>", keymapOptionsGp("Visual GpVnew"))
+vim.keymap.set("v", "<leader>qwv", ":<C-u>'<,'>GpVnew<cr>", keymapOptionsGp("Visual GpVnew"))
+
+vim.keymap.set({"n", "i", "v", "x"}, "<C-q>s", "<cmd>GpStop<cr>", keymapOptionsGp("Stop"))
+vim.keymap.set({"n", "v", "x"}, "<leader>qs", "<cmd>GpStop<cr>", keymapOptionsGp("Stop"))
+
+-- GP.NVIM Whisper
+vim.keymap.set({"n", "i"}, "<C-q>ww", "<cmd>GpWhisper<cr>", keymapOptionsGp("Whisper"))
+vim.keymap.set({"n"}, "<leader>ww", "<cmd>GpWhisper<cr>", keymapOptionsGp("Whisper"))
+vim.keymap.set("v", "<C-q>ww", ":<C-u>'<,'>GpWhisper<cr>", keymapOptionsGp("Visual Whisper"))
+vim.keymap.set("v", "<leader>ww", ":<C-u>'<,'>GpWhisper<cr>", keymapOptionsGp("Visual Whisper"))
+
+-- GP.NVIM Telescope agent picker
+vim.keymap.set('n', '<leader>fa', '<cmd>Telescope gp_picker agent<cr>', {desc = 'GP Agent Picker'})
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
