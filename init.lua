@@ -98,6 +98,9 @@ P.S. You can delete this when you're done too. It's your config now! :)
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
+-- Disable default mappings from vim-tmux-navigator (define unified ones to handle snacks.nvim terminal)
+vim.g.tmux_navigator_no_mappings = 1
+
 -- Set to true if you have a Nerd Font installed and selected in the terminal
 vim.g.have_nerd_font = true
 
@@ -198,26 +201,83 @@ vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagn
 -- or just use <C-\><C-n> to exit terminal mode
 vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
 
--- TIP: Disable arrow keys in normal mode
--- vim.keymap.set('n', '<left>', '<cmd>echo "Use h to move!!"<CR>')
--- vim.keymap.set('n', '<right>', '<cmd>echo "Use l to move!!"<CR>')
--- vim.keymap.set('n', '<up>', '<cmd>echo "Use k to move!!"<CR>')
--- vim.keymap.set('n', '<down>', '<cmd>echo "Use j to move!!"<CR>')
-
+-- I use vim-tmux-navigator instead
 -- Keybinds to make split navigation easier.
 --  Use CTRL+<hjkl> to switch between windows
 --
 --  See `:help wincmd` for a list of all window commands
-vim.keymap.set('n', '<C-h>', '<C-w><C-h>', { desc = 'Move focus to the left window' })
-vim.keymap.set('n', '<C-l>', '<C-w><C-l>', { desc = 'Move focus to the right window' })
-vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
-vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
+-- vim.keymap.set('n', '<C-h>', '<C-w><C-h>', { desc = 'Move focus to the left window' })
+-- vim.keymap.set('n', '<C-l>', '<C-w><C-l>', { desc = 'Move focus to the right window' })
+-- vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
+-- vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
 
 -- NOTE: Some terminals have colliding keymaps or are not able to send distinct keycodes
 -- vim.keymap.set("n", "<C-S-h>", "<C-w>H", { desc = "Move window to the left" })
 -- vim.keymap.set("n", "<C-S-l>", "<C-w>L", { desc = "Move window to the right" })
 -- vim.keymap.set("n", "<C-S-j>", "<C-w>J", { desc = "Move window to the lower" })
 -- vim.keymap.set("n", "<C-S-k>", "<C-w>K", { desc = "Move window to the upper" })
+
+-- Unified Neovim <-> Tmux navigation (normal & terminal, incl. snacks / Claude Code)
+-- Requires: vim.g.tmux_navigator_no_mappings = 1 (set before plugin load)
+local function TmuxWinNavigate(dir)
+  -- Mapping from direction key to tmux-navigator command suffix
+  local tmux_suffix = { h = 'Left', j = 'Down', k = 'Up', l = 'Right', p = 'Previous' }
+  local fallback = { h = 'h', j = 'j', k = 'k', l = 'l' } -- wincmd fallbacks
+
+  local function do_nav()
+    local suffix = tmux_suffix[dir]
+    if suffix and vim.fn.exists(':TmuxNavigate' .. suffix) == 2 then
+      vim.cmd('silent! TmuxNavigate' .. suffix)
+    else
+      if fallback[dir] then
+        vim.cmd('wincmd ' .. fallback[dir])
+      end
+    end
+  end
+
+  if vim.fn.mode() == 't' then
+    -- Leave terminal mode first
+    local esc = vim.api.nvim_replace_termcodes('<C-\\><C-n>', true, false, true)
+    vim.api.nvim_feedkeys(esc, 'n', false)
+    -- Schedule so we only run after Neovim fully returns to normal mode
+    vim.schedule(do_nav)
+  else
+    do_nav()
+  end
+end
+
+local function map_nav(lhs, dir, desc)
+  vim.keymap.set({ 'n', 't' }, lhs, function()
+    TmuxWinNavigate(dir)
+  end, { silent = true, desc = desc })
+end
+
+map_nav('<C-h>', 'h', 'Navigate Left (tmux/win)')
+map_nav('<C-j>', 'j', 'Navigate Down (tmux/win)')
+map_nav('<C-k>', 'k', 'Navigate Up (tmux/win)')
+map_nav('<C-l>', 'l', 'Navigate Right (tmux/win)')
+map_nav('<C-\\>', 'p', 'Navigate Previous (tmux/win)')
+
+-- (Optional but robust) Ensure mappings are always present for newly created terminal buffers
+vim.api.nvim_create_autocmd('TermOpen', {
+  group = vim.api.nvim_create_augroup('user-term-tmux-nav', { clear = true }),
+  pattern = '*',
+  callback = function(ev)
+    for _, spec in ipairs {
+      { '<C-h>', 'h' },
+      { '<C-j>', 'j' },
+      { '<C-k>', 'k' },
+      { '<C-l>', 'l' },
+      { '<C-\\>', 'p' },
+    } do
+      local lhs, dir = spec[1], spec[2]
+      vim.keymap.set('t', lhs, function()
+        TmuxWinNavigate(dir)
+      end, { silent = true, buffer = ev.buf })
+    end
+  end,
+  desc = 'Terminal tmux-style navigation',
+})
 
 -- [[ Basic Autocommands ]]
 --  See `:help lua-guide-autocommands`
@@ -1300,6 +1360,19 @@ require('lazy').setup({
       }
       require('gp').setup(gp_conf)
     end,
+  },
+
+  -- Claude Code Neovim integration
+  {
+    'coder/claudecode.nvim',
+    dependencies = { 'folke/snacks.nvim' },
+    opts = {
+      terminal_cmd = 'claude', -- Use command from PATH
+    },
+    config = true,
+    keys = {
+      { '<leader>ac', '<cmd>ClaudeCode<cr>', desc = 'Toggle Claude Code' },
+    },
   },
 
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
