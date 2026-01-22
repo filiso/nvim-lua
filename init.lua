@@ -2,8 +2,10 @@
 My TODOS:
 TODO:
 - figure out how to use black. Does it have to be installed separately in every Python env.?
-- similarly, how is nvim-dap currently installed / configured for Python.
 - add more keybind description to which-key
+- don't import all custom plugins at once. Do it separetely for debugging etc.
+NOTE:
+- install debugpy for every project that needs nvim-dap
 --]]
 
 --[[
@@ -1386,7 +1388,7 @@ require('lazy').setup({
   --    This is the easiest way to modularize your config.
   --
   --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  -- { import = 'custom.plugins' },
+  { import = 'custom.plugins' },
   --
   -- For additional information with loading, sourcing and examples see `:help lazy.nvim-🔌-plugin-spec`
   -- Or use telescope!
