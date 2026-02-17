@@ -1185,6 +1185,7 @@ require('lazy').setup({
     'frankroeder/parrot.nvim',
     dependencies = { 'nvim-lua/plenary.nvim', 'nvim-telescope/telescope.nvim' },
     config = function()
+      local parrot_chat_dir = vim.fn.expand '~/data/opt_files/parrot.nvim/chats'
       require('parrot').setup {
         -- Providers must be explicitly configured
         providers = {
@@ -1323,7 +1324,7 @@ require('lazy').setup({
         },
 
         -- Directory for storing chat files
-        chat_dir = vim.fn.stdpath 'data' .. '/parrot/chats',
+        chat_dir = parrot_chat_dir,
 
         -- Directory for persisted state (provider/model selection)
         state_dir = vim.fn.stdpath 'data' .. '/parrot/persisted',
@@ -1427,6 +1428,17 @@ require('lazy').setup({
           end,
         },
       }
+
+      vim.api.nvim_create_autocmd('BufWinEnter', {
+        group = vim.api.nvim_create_augroup('parrot-chat-left', { clear = true }),
+        callback = function(args)
+          local name = vim.api.nvim_buf_get_name(args.buf)
+          if name ~= '' and name:find(parrot_chat_dir, 1, true) == 1 then
+            vim.cmd 'wincmd H'
+          end
+        end,
+        desc = 'Move Parrot chat window to the left',
+      })
     end,
   },
 
