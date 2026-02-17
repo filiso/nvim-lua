@@ -494,6 +494,7 @@ require('lazy').setup({
         { '<leader>s', group = '[S]earch' },
         { '<leader>t', group = '[T]oggle' },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
+        { '<leader>o', group = '[O]penCode', mode = { 'n', 'v' } },
       },
     },
   },
@@ -1361,11 +1362,64 @@ require('lazy').setup({
     dependencies = { 'folke/snacks.nvim' },
     opts = {
       terminal_cmd = 'claude', -- Use command from PATH
+      terminal = {
+        split_side = 'left', -- Open on the left side
+      },
     },
     config = true,
     keys = {
       { '<leader>ac', '<cmd>ClaudeCode<cr>', desc = 'Toggle Claude Code' },
     },
+  },
+
+  -- OpenCode AI assistant integration
+  {
+    'NickvanDyke/opencode.nvim',
+    dependencies = {
+      { 'folke/snacks.nvim', opts = { input = {}, picker = {}, terminal = {} } },
+    },
+    config = function()
+      ---@type opencode.Opts
+      vim.g.opencode_opts = {
+        provider = {
+          enabled = 'snacks',
+          snacks = {
+            auto_close = true,
+            win = {
+              position = 'left', -- Split on the left side
+              enter = false, -- Stay in the editor after opening
+              wo = { winbar = '' },
+              bo = { filetype = 'opencode_terminal' },
+            },
+          },
+        },
+      }
+
+      -- Required for opts.events.reload (auto-reload files edited by opencode)
+      vim.o.autoread = true
+
+      -- Keymaps
+      vim.keymap.set({ 'n', 'x' }, '<leader>oa', function()
+        require('opencode').ask('@this: ', { submit = true })
+      end, { desc = 'Ask OpenCode about selection' })
+
+      vim.keymap.set({ 'n', 'x' }, '<leader>os', function()
+        require('opencode').select()
+      end, { desc = 'OpenCode select action' })
+
+      vim.keymap.set({ 'n', 't' }, '<leader>oo', function()
+        require('opencode').toggle()
+      end, { desc = 'Toggle OpenCode' })
+
+      -- Operator for adding range to opencode prompt
+      vim.keymap.set({ 'n', 'x' }, '<leader>op', function()
+        return require('opencode').operator '@this '
+      end, { desc = 'Add range to OpenCode', expr = true })
+
+      vim.keymap.set('n', '<leader>ol', function()
+        return require('opencode').operator('@this ') .. '_'
+      end, { desc = 'Add line to OpenCode', expr = true })
+    end,
   },
 
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
