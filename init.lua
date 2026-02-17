@@ -1109,34 +1109,6 @@ require('lazy').setup({
         return '%2l:%-2v'
       end
 
-      local function parrot_status()
-        local ok, parrot_config = pcall(require, 'parrot.config')
-        if not ok then
-          return ''
-        end
-        local status_info = parrot_config.get_status_info()
-        if not status_info or not status_info.prov then
-          return ''
-        end
-        local provider = status_info.is_chat and status_info.prov.chat.name or status_info.prov.command.name
-        local model = status_info.model or ''
-        if provider == '' and model == '' then
-          return ''
-        end
-        return string.format('prt:%s(%s)', provider, model)
-      end
-
-      local section_fileinfo = statusline.section_fileinfo
-      ---@diagnostic disable-next-line: duplicate-set-field
-      statusline.section_fileinfo = function(args)
-        local base = section_fileinfo(args)
-        local parrot = parrot_status()
-        if parrot == '' then
-          return base
-        end
-        return base .. ' ' .. parrot
-      end
-
       -- Simple and easy commenting
       local comment = require 'mini.comment'
       comment.setup {
@@ -1191,7 +1163,7 @@ require('lazy').setup({
         providers = {
           openai = {
             name = 'openai',
-            api_key = os.getenv 'OPENAI_API_KEY',
+            api_key = function() return os.getenv 'OPENAI_API_KEY' end,
             endpoint = 'https://api.openai.com/v1/chat/completions',
             -- Default parameters for chat and command modes
             params = {
@@ -1214,7 +1186,7 @@ require('lazy').setup({
           },
           anthropic = {
             name = 'anthropic',
-            api_key = os.getenv 'ANTHROPIC_API_KEY',
+            api_key = function() return os.getenv 'ANTHROPIC_API_KEY' end,
             endpoint = 'https://api.anthropic.com/v1/messages',
             params = {
               chat = { temperature = 0.8, max_tokens = 8192 },
@@ -1253,7 +1225,7 @@ require('lazy').setup({
           },
           gemini = {
             name = 'gemini',
-            api_key = os.getenv 'GEMINI_API_KEY',
+            api_key = function() return os.getenv 'GEMINI_API_KEY' end,
             endpoint = function(self)
               return 'https://generativelanguage.googleapis.com/v1beta/models/' .. self._model .. ':streamGenerateContent?alt=sse'
             end,
@@ -1326,9 +1298,6 @@ require('lazy').setup({
         -- Directory for storing chat files
         chat_dir = parrot_chat_dir,
 
-        -- Directory for persisted state (provider/model selection)
-        state_dir = vim.fn.stdpath 'data' .. '/parrot/persisted',
-
         -- Chat buffer shortcuts
         chat_shortcut_respond = { modes = { 'n', 'i', 'v', 'x' }, shortcut = '<C-q><C-q>' },
         chat_shortcut_delete = { modes = { 'n', 'i', 'v', 'x' }, shortcut = '<C-q>d' },
@@ -1338,24 +1307,7 @@ require('lazy').setup({
         -- Use telescope for model/chat finding (fzf_lua_opts set to nil)
         fzf_lua_opts = nil,
 
-        -- Enable preview mode for code changes
-        enable_preview_mode = true,
-        preview_timeout = 10000, -- 10 seconds before auto-apply
-
-        -- Show spinner while loading
-        enable_spinner = true,
         spinner_type = 'star',
-
-        -- Default target for toggle commands
-        toggle_target = 'vsplit',
-
-        -- User input style
-        user_input_ui = 'native',
-
-        -- Popup styling
-        style_popup_border = 'single',
-
-        -- Show context hints for @file, @buffer, @directory completions
         show_context_hints = true,
 
         -- Custom hooks for common tasks
