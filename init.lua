@@ -1422,6 +1422,21 @@ require('lazy').setup({
     end,
   },
 
+  -- OpenAI Codex Neovim integration
+  {
+    'filiso/codexcli.nvim',
+    branch = 'split-fix',
+    -- optional: you can lazy-load on a command if you want
+    cmd = { 'CodexCLIStart', 'CodexCLI', 'CodexCLIStatus' },
+    config = function()
+      require('codexcli').setup {
+        auto_start = true, -- set true if you want it to start automatically
+        terminal_cmd = 'codex', -- the Codex CLI executable name
+        focus_after_send = true, -- optional UI behavior
+      }
+    end,
+  },
+
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
   -- place them in the correct locations.
