@@ -495,6 +495,7 @@ require('lazy').setup({
         { '<leader>t', group = '[T]oggle' },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
         { '<leader>o', group = '[O]penCode', mode = { 'n', 'v' } },
+        { '<leader>q', group = 'LLM [Q]uery', mode = { 'n', 'v' } },
       },
     },
   },
@@ -525,9 +526,6 @@ require('lazy').setup({
         end,
       },
       { 'nvim-telescope/telescope-ui-select.nvim' },
-
-      -- gp.nvim agent picker for telescope
-      'undg/telescope-gp-agent-picker.nvim',
 
       -- Useful for getting pretty icons, but requires a Nerd Font.
       { 'nvim-tree/nvim-web-devicons', enabled = vim.g.have_nerd_font },
@@ -580,7 +578,6 @@ require('lazy').setup({
       -- Enable Telescope extensions if they are installed
       pcall(require('telescope').load_extension, 'fzf')
       pcall(require('telescope').load_extension, 'ui-select')
-      pcall(require('telescope').load_extension, 'gp_picker')
 
       -- See `:help telescope.builtin`
       local builtin = require 'telescope.builtin'
@@ -1015,13 +1012,22 @@ require('lazy').setup({
       },
 
       sources = {
-        default = { 'lsp', 'path', 'snippets', 'lazydev', 'copilot' },
+        default = { 'lsp', 'path', 'snippets', 'lazydev', 'copilot', 'parrot' },
         providers = {
           lazydev = { module = 'lazydev.integrations.blink', score_offset = 100 },
           copilot = {
             module = 'blink-cmp-copilot',
             score_offset = 100,
             async = true,
+          },
+          parrot = {
+            module = 'parrot.completion.blink',
+            name = 'parrot',
+            score_offset = 20,
+            opts = {
+              show_hidden_files = false,
+              max_items = 50,
+            },
           },
         },
       },
@@ -1103,6 +1109,34 @@ require('lazy').setup({
         return '%2l:%-2v'
       end
 
+      local function parrot_status()
+        local ok, parrot_config = pcall(require, 'parrot.config')
+        if not ok then
+          return ''
+        end
+        local status_info = parrot_config.get_status_info()
+        if not status_info or not status_info.prov then
+          return ''
+        end
+        local provider = status_info.is_chat and status_info.prov.chat.name or status_info.prov.command.name
+        local model = status_info.model or ''
+        if provider == '' and model == '' then
+          return ''
+        end
+        return string.format('prt:%s(%s)', provider, model)
+      end
+
+      local section_fileinfo = statusline.section_fileinfo
+      ---@diagnostic disable-next-line: duplicate-set-field
+      statusline.section_fileinfo = function(args)
+        local base = section_fileinfo(args)
+        local parrot = parrot_status()
+        if parrot == '' then
+          return base
+        end
+        return base .. ' ' .. parrot
+      end
+
       -- Simple and easy commenting
       local comment = require 'mini.comment'
       comment.setup {
@@ -1146,213 +1180,253 @@ require('lazy').setup({
     --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
   },
 
-  -- LLM chat support in a Neovim-native style
+  -- LLM chat support in a Neovim-native style with parrot.nvim
   {
-    'robitx/gp.nvim',
+    'frankroeder/parrot.nvim',
+    dependencies = { 'nvim-lua/plenary.nvim', 'nvim-telescope/telescope.nvim' },
     config = function()
-      local gp_conf = {
-        -- For customization, refer to Install > Configuration in the Documentation/Readme
+      require('parrot').setup {
+        -- Providers must be explicitly configured
         providers = {
           openai = {
+            name = 'openai',
+            api_key = os.getenv 'OPENAI_API_KEY',
             endpoint = 'https://api.openai.com/v1/chat/completions',
-            secret = os.getenv 'OPENAI_API_KEY',
-          },
-          copilot = {
-            endpoint = 'https://api.githubcopilot.com/chat/completions',
-            secret = {
-              'bash',
-              '-c',
-              "cat ~/.config/github-copilot/hosts.json | sed -e 's/.*oauth_token...//;s/\".*//'",
+            -- Default parameters for chat and command modes
+            params = {
+              chat = { temperature = 1.1, top_p = 1 },
+              command = { temperature = 0.8, top_p = 1 },
+            },
+            -- Topic model for chat summarization
+            topic = {
+              model = 'gpt-5-nano',
+              params = { max_tokens = 64 },
+            },
+            -- Available models
+            models = {
+              'gpt-5.2',
+              'gpt-5.2-pro',
+              'gpt-5.2-codex',
+              'gpt-5-mini',
+              'gpt-5-nano',
             },
           },
           anthropic = {
+            name = 'anthropic',
+            api_key = os.getenv 'ANTHROPIC_API_KEY',
             endpoint = 'https://api.anthropic.com/v1/messages',
-            secret = os.getenv 'ANTHROPIC_API_KEY',
+            params = {
+              chat = { temperature = 0.8, max_tokens = 8192 },
+              command = { temperature = 0.8, max_tokens = 8192 },
+            },
+            topic = {
+              model = 'claude-haiku-4-5',
+              params = { max_tokens = 32 },
+            },
+            -- Custom headers for Anthropic API
+            headers = function(self)
+              return {
+                ['Content-Type'] = 'application/json',
+                ['x-api-key'] = self.api_key,
+                ['anthropic-version'] = '2023-06-01',
+              }
+            end,
+            models = {
+              'claude-opus-4-6',
+              'claude-sonnet-4-5',
+              'claude-haiku-4-5',
+            },
+            -- Anthropic requires special payload preprocessing
+            preprocess_payload = function(payload)
+              -- Trim whitespace from messages
+              for _, message in ipairs(payload.messages) do
+                message.content = message.content:gsub('^%s*(.-)%s*$', '%1')
+              end
+              -- Move system prompt from messages to payload.system
+              if payload.messages[1] and payload.messages[1].role == 'system' then
+                payload.system = payload.messages[1].content
+                table.remove(payload.messages, 1)
+              end
+              return payload
+            end,
+          },
+          gemini = {
+            name = 'gemini',
+            api_key = os.getenv 'GEMINI_API_KEY',
+            endpoint = function(self)
+              return 'https://generativelanguage.googleapis.com/v1beta/models/' .. self._model .. ':streamGenerateContent?alt=sse'
+            end,
+            model_endpoint = function(self)
+              return { 'https://generativelanguage.googleapis.com/v1beta/models?key=' .. self.api_key }
+            end,
+            params = {
+              chat = { temperature = 1.1, topP = 1, topK = 10, maxOutputTokens = 8192 },
+              command = { temperature = 0.8, topP = 1, topK = 10, maxOutputTokens = 8192 },
+            },
+            topic = {
+              model = 'gemini-flash-lite-latest',
+              params = { maxOutputTokens = 64 },
+            },
+            headers = function(self)
+              return {
+                ['Content-Type'] = 'application/json',
+                ['x-goog-api-key'] = self.api_key,
+              }
+            end,
+            models = {
+              'gemini-3-pro-preview',
+              'gemini-3-flash-preview',
+              'gemini-flash-lite-latest',
+            },
+            preprocess_payload = function(payload)
+              local contents = {}
+              local system_instruction = nil
+              for _, message in ipairs(payload.messages) do
+                if message.role == 'system' then
+                  system_instruction = { parts = { { text = message.content } } }
+                else
+                  local role = message.role == 'assistant' and 'model' or 'user'
+                  table.insert(contents, { role = role, parts = { { text = message.content:gsub('^%s*(.-)%s*$', '%1') } } })
+                end
+              end
+              local gemini_payload = {
+                contents = contents,
+                generationConfig = {
+                  temperature = payload.temperature,
+                  topP = payload.topP or payload.top_p,
+                  maxOutputTokens = payload.max_tokens or payload.maxOutputTokens,
+                },
+              }
+              if system_instruction then
+                gemini_payload.systemInstruction = system_instruction
+              end
+              return gemini_payload
+            end,
+            process_stdout = function(response)
+              if not response or response == '' then
+                return nil
+              end
+              local success, decoded = pcall(vim.json.decode, response)
+              if
+                success
+                and decoded.candidates
+                and decoded.candidates[1]
+                and decoded.candidates[1].content
+                and decoded.candidates[1].content.parts
+                and decoded.candidates[1].content.parts[1]
+              then
+                return decoded.candidates[1].content.parts[1].text
+              end
+              return nil
+            end,
           },
         },
 
-        agents = {
-          {
-            name = 'ExampleDisabledAgent',
-            disable = true,
-          },
-          {
-            name = 'ChatGPT4o',
-            chat = true,
-            command = false,
-            -- string with model name or table with model name and parameters
-            model = { model = 'gpt-4o', temperature = 1.1, top_p = 1 },
-            -- system prompt (use this to specify the persona/role of the AI)
-            system_prompt = require('gp.defaults').chat_system_prompt,
-          },
-          {
-            provider = 'openai',
-            name = 'ChatGPT4o-mini',
-            chat = true,
-            command = false,
-            -- string with model name or table with model name and parameters
-            model = { model = 'gpt-4o-mini', temperature = 1.1, top_p = 1 },
-            -- system prompt (use this to specify the persona/role of the AI)
-            system_prompt = require('gp.defaults').chat_system_prompt,
-          },
-          {
-            provider = 'openai',
-            name = 'ChatChatGPT4o',
-            chat = true,
-            command = false,
-            -- string with model name or table with model name and parameters
-            model = { model = 'chatgpt-4o-latest', temperature = 1.1, top_p = 1 },
-            -- system prompt (use this to specify the persona/role of the AI)
-            system_prompt = require('gp.defaults').chat_system_prompt,
-          },
-          {
-            provider = 'copilot',
-            name = 'ChatCopilot',
-            chat = true,
-            command = false,
-            -- string with model name or table with model name and parameters
-            model = { model = 'gpt-4o', temperature = 1.1, top_p = 1 },
-            -- system prompt (use this to specify the persona/role of the AI)
-            system_prompt = require('gp.defaults').chat_system_prompt,
-          },
-          {
-            provider = 'anthropic',
-            name = 'ChatClaude-Sonnet-4-5',
-            chat = true,
-            command = false,
-            -- string with model name or table with model name and parameters
-            model = { model = 'claude-sonnet-4-5', temperature = 0.8 },
-            -- system prompt (use this to specify the persona/role of the AI)
-            system_prompt = require('gp.defaults').chat_system_prompt,
-          },
-          {
-            provider = 'anthropic',
-            name = 'ChatClaude-Opus-4.5',
-            chat = true,
-            command = false,
-            -- string with model name or table with model name and parameters
-            model = { model = 'claude-opus-4-5', temperature = 0.8 },
-            -- system prompt (use this to specify the persona/role of the AI)
-            system_prompt = require('gp.defaults').chat_system_prompt,
-          },
-          {
-            provider = 'anthropic',
-            name = 'ChatClaude-Haiku-4-5',
-            chat = true,
-            command = false,
-            -- string with model name or table with model name and parameters
-            model = { model = 'claude-haiku-4-5', temperature = 0.8 },
-            -- system prompt (use this to specify the persona/role of the AI)
-            system_prompt = require('gp.defaults').chat_system_prompt,
-          },
-          {
-            provider = 'openai',
-            name = 'CodeGPT4o',
-            chat = false,
-            command = true,
-            -- string with model name or table with model name and parameters
-            model = { model = 'gpt-4o', temperature = 0.8, top_p = 1 },
-            -- system prompt (use this to specify the persona/role of the AI)
-            system_prompt = require('gp.defaults').code_system_prompt,
-          },
-          {
-            provider = 'openai',
-            name = 'CodeGPT4o-mini',
-            chat = false,
-            command = true,
-            -- string with model name or table with model name and parameters
-            model = { model = 'gpt-4o-mini', temperature = 0.7, top_p = 1 },
-            -- system prompt (use this to specify the persona/role of the AI)
-            system_prompt = 'Please return ONLY code snippets.\nSTART AND END YOUR ANSWER WITH:\n\n```',
-          },
-          {
-            provider = 'openai',
-            name = 'CodeChatGPT4o',
-            chat = false,
-            command = true,
-            -- string with model name or table with model name and parameters
-            model = { model = 'chatgpt-4o-latest', temperature = 0.8, top_p = 1 },
-            -- system prompt (use this to specify the persona/role of the AI)
-            system_prompt = require('gp.defaults').code_system_prompt,
-          },
-          {
-            provider = 'copilot',
-            name = 'CodeCopilot',
-            chat = false,
-            command = true,
-            -- string with model name or table with model name and parameters
-            model = { model = 'gpt-4o', temperature = 0.8, top_p = 1, n = 1 },
-            -- system prompt (use this to specify the persona/role of the AI)
-            system_prompt = require('gp.defaults').code_system_prompt,
-          },
-          {
-            provider = 'anthropic',
-            name = 'CodeClaude-Sonnet-4-5',
-            chat = false,
-            command = true,
-            -- string with model name or table with model name and parameters
-            model = { model = 'claude-sonnet-4-5', temperature = 0.8 },
-            -- system prompt (use this to specify the persona/role of the AI)
-            system_prompt = 'Please return ONLY code snippets.\nSTART AND END YOUR ANSWER WITH:\n\n```',
-          },
-          {
-            provider = 'anthropic',
-            name = 'CodeClaude-Opus-4.5',
-            chat = false,
-            command = true,
-            -- string with model name or table with model name and parameters
-            model = { model = 'claude-opus-4-5', temperature = 0.8 },
-            -- system prompt (use this to specify the persona/role of the AI)
-            system_prompt = 'Please return ONLY code snippets.\nSTART AND END YOUR ANSWER WITH:\n\n```',
-          },
-        },
+        -- Directory for storing chat files
+        chat_dir = vim.fn.stdpath 'data' .. '/parrot/chats',
 
-        -- directory for storing chat files
-        chat_dir = '/home/fs/data/opt_files/gp.nvim/chats',
+        -- Directory for persisted state (provider/model selection)
+        state_dir = vim.fn.stdpath 'data' .. '/parrot/persisted',
 
-        -- image generation settings
-        image = {
-          store_dir = '/home/fs/data/opt_files/gp.nvim/images',
-        },
-
-        -- (be careful to choose something which will work across specified modes)
+        -- Chat buffer shortcuts
         chat_shortcut_respond = { modes = { 'n', 'i', 'v', 'x' }, shortcut = '<C-q><C-q>' },
         chat_shortcut_delete = { modes = { 'n', 'i', 'v', 'x' }, shortcut = '<C-q>d' },
         chat_shortcut_stop = { modes = { 'n', 'i', 'v', 'x' }, shortcut = '<C-q>s' },
         chat_shortcut_new = { modes = { 'n', 'i', 'v', 'x' }, shortcut = '<C-q>c' },
 
-        whisper = {
-          -- you can disable whisper completely by whisper = {disable = true}
-          disable = false,
+        -- Use telescope for model/chat finding (fzf_lua_opts set to nil)
+        fzf_lua_opts = nil,
 
-          -- OpenAI audio/transcriptions api endpoint to transcribe audio to text
-          endpoint = 'https://api.openai.com/v1/audio/transcriptions',
-          -- directory for storing whisper files
-          store_dir = (os.getenv 'TMPDIR' or os.getenv 'TEMP' or '/tmp') .. '/gp_whisper',
-          -- multiplier of RMS level dB for threshold used by sox to detect silence vs speech
-          -- decibels are negative, the recording is normalized to -3dB =>
-          -- increase this number to pick up more (weaker) sounds as possible speech
-          -- decrease this number to pick up only louder sounds as possible speech
-          -- you can disable silence trimming by setting this a very high number (like 1000.0)
-          silence = '1.75',
-          -- whisper tempo (1.0 is normal speed)
-          tempo = '1.75',
-          -- The language of the input audio, in ISO-639-1 format.
-          language = 'en',
-          -- command to use for recording can be nil (unset) for automatic selection
-          -- string ("sox", "arecord", "ffmpeg") or table with command and arguments:
-          -- sox is the most universal, but can have start/end cropping issues caused by latency
-          -- arecord is linux only, but has no cropping issues and is faster
-          -- ffmpeg in the default configuration is macos only, but can be used on any platform
-          -- (see https://trac.ffmpeg.org/wiki/Capture/Desktop for more info)
-          -- below is the default configuration for all three commands:
-          -- whisper_rec_cmd = {"sox", "-c", "1", "--buffer", "32", "-d", "rec.wav", "trim", "0", "60:00"},
-          -- whisper_rec_cmd = {"arecord", "-c", "1", "-f", "S16_LE", "-r", "48000", "-d", "3600", "rec.wav"},
-          -- whisper_rec_cmd = {"ffmpeg", "-y", "-f", "avfoundation", "-i", ":0", "-t", "3600", "rec.wav"},
-          rec_cmd = nil,
+        -- Enable preview mode for code changes
+        enable_preview_mode = true,
+        preview_timeout = 10000, -- 10 seconds before auto-apply
+
+        -- Show spinner while loading
+        enable_spinner = true,
+        spinner_type = 'star',
+
+        -- Default target for toggle commands
+        toggle_target = 'vsplit',
+
+        -- User input style
+        user_input_ui = 'native',
+
+        -- Popup styling
+        style_popup_border = 'single',
+
+        -- Show context hints for @file, @buffer, @directory completions
+        show_context_hints = true,
+
+        -- Custom hooks for common tasks
+        hooks = {
+          -- Ask a question and get answer in a popup
+          Ask = function(prt, params)
+            local template = [[
+              In light of your existing knowledge base, please generate a response that
+              is succinct and directly addresses the question posed. Prioritize accuracy
+              and relevance in your answer, drawing upon the most recent information
+              available to you. Aim to deliver your response in a concise manner,
+              focusing on the essence of the inquiry.
+              Question: {{command}}
+            ]]
+            local model_obj = prt.get_model 'command'
+            prt.Prompt(params, prt.ui.Target.popup, model_obj, 'Ask ~ ', template)
+          end,
+          -- Code implementation from comment/description
+          Implement = function(prt, params)
+            local template = [[
+              I have the following code from {{filename}}:
+              ```{{filetype}}
+              {{selection}}
+              ```
+              Please look at the following section specifically and implement the needed code.
+              Respond just with the snippet of code that should be inserted.
+            ]]
+            local model_obj = prt.get_model 'command'
+            prt.Prompt(params, prt.ui.Target.append, model_obj, nil, template)
+          end,
+          -- Explain code
+          Explain = function(prt, params)
+            local template = [[
+              Your task is to take the code snippet from {{filename}} and explain it.
+              Break down the code's functionality, purpose, and key components.
+              Use markdown format with codeblocks.
+
+              ```{{filetype}}
+              {{selection}}
+              ```
+            ]]
+            local model_obj = prt.get_model 'command'
+            prt.Prompt(params, prt.ui.Target.new, model_obj, nil, template)
+          end,
+          -- Fix bugs in code
+          FixBugs = function(prt, params)
+            local template = [[
+              You are an expert in {{filetype}}.
+              Fix bugs in the code below from {{filename}}:
+
+              ```{{filetype}}
+              {{selection}}
+              ```
+
+              Provide the corrected code and explain what was fixed.
+            ]]
+            local model_obj = prt.get_model 'command'
+            prt.Prompt(params, prt.ui.Target.new, model_obj, nil, template)
+          end,
+          -- Spell check in a chat
+          SpellCheck = function(prt, params)
+            local chat_prompt = [[
+              Your task is to take the text provided and rewrite it into a clear,
+              grammatically correct version while preserving the original meaning
+              as closely as possible. Correct any spelling mistakes, punctuation
+              errors, verb tense issues, word choice problems, and other
+              grammatical mistakes.
+            ]]
+            prt.ChatNew(params, chat_prompt)
+          end,
         },
       }
-      require('gp').setup(gp_conf)
     end,
   },
 
@@ -1423,7 +1497,7 @@ require('lazy').setup({
       end, { desc = 'Add range to OpenCode', expr = true })
 
       vim.keymap.set('n', '<leader>ol', function()
-        return require('opencode').operator('@this ') .. '_'
+        return require('opencode').operator '@this ' .. '_'
       end, { desc = 'Add line to OpenCode', expr = true })
     end,
   },
@@ -1582,85 +1656,73 @@ vim.keymap.set('n', '<leader>cx', function()
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('<C-c><C-c>', true, false, true), 'm', true)
 end, { silent = true })
 
--- [[ GP.NVIM Keymaps ]]
+-- [[ Parrot.NVIM Keymaps ]]
 -- Setup shortcuts here (see Usage > Shortcuts in the Documentation/Readme)
-local function keymapOptionsGp(desc)
+local function keymapOptionsParrot(desc)
   return {
     noremap = true,
     silent = true,
     nowait = true,
-    desc = 'GPT prompt ' .. desc,
+    desc = 'Parrot prompt ' .. desc,
   }
 end
 
 -- Chat commands
 -- many commands have both a <C-q> and <leader>q binding on purpose
--- GpChatNew
-vim.keymap.set({ 'n', 'i' }, '<C-q>n', '<cmd>GpChatNew<cr>', keymapOptionsGp 'New Chat')
-vim.keymap.set({ 'n' }, '<leader>qn', '<cmd>GpChatNew<cr>', keymapOptionsGp 'New Chat')
-vim.keymap.set('v', '<C-q>n', ":<C-u>'<,'>GpChatNew<cr>", keymapOptionsGp 'Visual Chat New')
-vim.keymap.set('v', '<leader>qn', ":<C-u>'<,'>GpChatNew<cr>", keymapOptionsGp 'Visual Chat New')
--- GpChatToggle
-vim.keymap.set({ 'n', 'i' }, '<C-q>t', '<cmd>GpChatToggle<cr>', keymapOptionsGp 'Toggle Chat')
-vim.keymap.set({ 'n' }, '<leader>qt', '<cmd>GpChatToggle<cr>', keymapOptionsGp 'Toggle Chat')
-vim.keymap.set('v', '<C-q>t', ":<C-u>'<,'>GpChatToggle<cr>", keymapOptionsGp 'Visual Toggle Chat')
-vim.keymap.set('v', '<leader>qt', ":<C-u>'<,'>GpChatToggle<cr>", keymapOptionsGp 'Visual Toggle Chat')
--- GpChatFinder
-vim.keymap.set({ 'n', 'i' }, '<C-q>f', '<cmd>GpChatFinder<cr>', keymapOptionsGp 'Chat Finder')
-vim.keymap.set({ 'n' }, '<leader>qf', '<cmd>GpChatFinder<cr>', keymapOptionsGp 'Chat Finder')
--- GpChatPaste
-vim.keymap.set('v', '<C-q>p', ":<C-u>'<,'>GpChatPaste<cr>", keymapOptionsGp 'Visual Chat Paste')
-vim.keymap.set('v', '<leader>qp', ":<C-u>'<,'>GpChatPaste<cr>", keymapOptionsGp 'Visual Chat Paste')
--- GpChatNew split, vsplit, tabnew
-vim.keymap.set({ 'n', 'i' }, '<C-q><C-x>', '<cmd>GpChatNew split<cr>', keymapOptionsGp 'New Chat split')
-vim.keymap.set({ 'n' }, '<leader>qx', '<cmd>GpChatNew split<cr>', keymapOptionsGp 'New Chat split')
-vim.keymap.set({ 'n', 'i' }, '<C-q><C-v>', '<cmd>GpChatNew vsplit<cr>', keymapOptionsGp 'New Chat vsplit')
-vim.keymap.set({ 'n' }, '<leader>qv', '<cmd>GpChatNew vsplit<cr>', keymapOptionsGp 'New Chat vsplit')
-vim.keymap.set({ 'n', 'i' }, '<C-q><C-,>', '<cmd>GpChatNew tabnew<cr>', keymapOptionsGp 'New Chat tabnew')
-vim.keymap.set({ 'n' }, '<leader>q,', '<cmd>GpChatNew tabnew<cr>', keymapOptionsGp 'New Chat tabnew')
-vim.keymap.set('v', '<C-q><C-x>', ":<C-u>'<,'>GpChatNew split<cr>", keymapOptionsGp 'Visual Chat New split')
-vim.keymap.set('v', '<leader>qx', ":<C-u>'<,'>GpChatNew split<cr>", keymapOptionsGp 'Visual Chat New split')
-vim.keymap.set('v', '<C-q><C-v>', ":<C-u>'<,'>GpChatNew vsplit<cr>", keymapOptionsGp 'Visual Chat New vsplit')
-vim.keymap.set('v', '<leader>qv', ":<C-u>'<,'>GpChatNew vsplit<cr>", keymapOptionsGp 'Visual Chat New vsplit')
-vim.keymap.set('v', '<C-q><C-,>', ":<C-u>'<,'>GpChatNew tabnew<cr>", keymapOptionsGp 'Visual Chat New tabnew')
-vim.keymap.set('v', '<leader>q,', ":<C-u>'<,'>GpChatNew tabnew<cr>", keymapOptionsGp 'Visual Chat New tabnew')
+-- PrtChatNew
+vim.keymap.set({ 'n', 'i' }, '<C-q>n', '<cmd>PrtChatNew<cr>', keymapOptionsParrot 'New Chat')
+vim.keymap.set({ 'n' }, '<leader>qn', '<cmd>PrtChatNew<cr>', keymapOptionsParrot 'New Chat')
+vim.keymap.set('v', '<C-q>n', ":<C-u>'<,'>PrtChatNew<cr>", keymapOptionsParrot 'Visual Chat New')
+vim.keymap.set('v', '<leader>qn', ":<C-u>'<,'>PrtChatNew<cr>", keymapOptionsParrot 'Visual Chat New')
+-- PrtChatToggle
+vim.keymap.set({ 'n', 'i' }, '<C-q>t', '<cmd>PrtChatToggle<cr>', keymapOptionsParrot 'Toggle Chat')
+vim.keymap.set({ 'n' }, '<leader>qt', '<cmd>PrtChatToggle<cr>', keymapOptionsParrot 'Toggle Chat')
+vim.keymap.set('v', '<C-q>t', ":<C-u>'<,'>PrtChatToggle<cr>", keymapOptionsParrot 'Visual Toggle Chat')
+vim.keymap.set('v', '<leader>qt', ":<C-u>'<,'>PrtChatToggle<cr>", keymapOptionsParrot 'Visual Toggle Chat')
+-- PrtChatFinder
+vim.keymap.set({ 'n', 'i' }, '<C-q>f', '<cmd>PrtChatFinder<cr>', keymapOptionsParrot 'Chat Finder')
+vim.keymap.set({ 'n' }, '<leader>qf', '<cmd>PrtChatFinder<cr>', keymapOptionsParrot 'Chat Finder')
+-- PrtChatPaste
+vim.keymap.set('v', '<C-q>p', ":<C-u>'<,'>PrtChatPaste<cr>", keymapOptionsParrot 'Visual Chat Paste')
+vim.keymap.set('v', '<leader>qp', ":<C-u>'<,'>PrtChatPaste<cr>", keymapOptionsParrot 'Visual Chat Paste')
+-- PrtChatNew split, vsplit, tabnew
+vim.keymap.set({ 'n', 'i' }, '<C-q><C-x>', '<cmd>PrtChatNew split<cr>', keymapOptionsParrot 'New Chat split')
+vim.keymap.set({ 'n' }, '<leader>qx', '<cmd>PrtChatNew split<cr>', keymapOptionsParrot 'New Chat split')
+vim.keymap.set({ 'n', 'i' }, '<C-q><C-v>', '<cmd>PrtChatNew vsplit<cr>', keymapOptionsParrot 'New Chat vsplit')
+vim.keymap.set({ 'n' }, '<leader>qv', '<cmd>PrtChatNew vsplit<cr>', keymapOptionsParrot 'New Chat vsplit')
+vim.keymap.set({ 'n', 'i' }, '<C-q><C-,>', '<cmd>PrtChatNew tabnew<cr>', keymapOptionsParrot 'New Chat tabnew')
+vim.keymap.set({ 'n' }, '<leader>q,', '<cmd>PrtChatNew tabnew<cr>', keymapOptionsParrot 'New Chat tabnew')
+vim.keymap.set('v', '<C-q><C-x>', ":<C-u>'<,'>PrtChatNew split<cr>", keymapOptionsParrot 'Visual Chat New split')
+vim.keymap.set('v', '<leader>qx', ":<C-u>'<,'>PrtChatNew split<cr>", keymapOptionsParrot 'Visual Chat New split')
+vim.keymap.set('v', '<C-q><C-v>', ":<C-u>'<,'>PrtChatNew vsplit<cr>", keymapOptionsParrot 'Visual Chat New vsplit')
+vim.keymap.set('v', '<leader>qv', ":<C-u>'<,'>PrtChatNew vsplit<cr>", keymapOptionsParrot 'Visual Chat New vsplit')
+vim.keymap.set('v', '<C-q><C-,>', ":<C-u>'<,'>PrtChatNew tabnew<cr>", keymapOptionsParrot 'Visual Chat New tabnew')
+vim.keymap.set('v', '<leader>q,', ":<C-u>'<,'>PrtChatNew tabnew<cr>", keymapOptionsParrot 'Visual Chat New tabnew')
 
 -- Prompt commands
--- GpRewrite, GpAppend, GpPrepend
-vim.keymap.set({ 'n', 'i' }, '<C-q>e', '<cmd>GpRewrite<cr>', keymapOptionsGp 'Inline Rewrite')
-vim.keymap.set({ 'n' }, '<leader>qe', '<cmd>GpRewrite<cr>', keymapOptionsGp 'Inline Rewrite')
-vim.keymap.set({ 'n', 'i' }, '<C-q>a', '<cmd>GpAppend<cr>', keymapOptionsGp 'Append (after)')
-vim.keymap.set({ 'n' }, '<leader>qa', '<cmd>GpAppend<cr>', keymapOptionsGp 'Append (after)')
-vim.keymap.set({ 'n', 'i' }, '<C-q>z', '<cmd>GpPrepend<cr>', keymapOptionsGp 'Prepend (before)')
-vim.keymap.set({ 'n' }, '<leader>qz', '<cmd>GpPrepend<cr>', keymapOptionsGp 'Prepend (before)')
-vim.keymap.set('v', '<C-q>e', ":<C-u>'<,'>GpRewrite<cr>", keymapOptionsGp 'Visual Rewrite')
-vim.keymap.set('v', '<leader>qe', ":<C-u>'<,'>GpRewrite<cr>", keymapOptionsGp 'Visual Rewrite')
-vim.keymap.set('v', '<C-q>a', ":<C-u>'<,'>GpAppend<cr>", keymapOptionsGp 'Visual Append (after)')
-vim.keymap.set('v', '<leader>qa', ":<C-u>'<,'>GpAppend<cr>", keymapOptionsGp 'Visual Append (after)')
-vim.keymap.set('v', '<C-q>z', ":<C-u>'<,'>GpPrepend<cr>", keymapOptionsGp 'Visual Prepend (before)')
-vim.keymap.set('v', '<leader>qz', ":<C-u>'<,'>GpPrepend<cr>", keymapOptionsGp 'Visual Prepend (before)')
+-- PrtRewrite, PrtAppend, PrtPrepend
+vim.keymap.set({ 'n', 'i' }, '<C-q>e', '<cmd>PrtRewrite<cr>', keymapOptionsParrot 'Inline Rewrite')
+vim.keymap.set({ 'n' }, '<leader>qe', '<cmd>PrtRewrite<cr>', keymapOptionsParrot 'Inline Rewrite')
+vim.keymap.set({ 'n', 'i' }, '<C-q>a', '<cmd>PrtAppend<cr>', keymapOptionsParrot 'Append (after)')
+vim.keymap.set({ 'n' }, '<leader>qa', '<cmd>PrtAppend<cr>', keymapOptionsParrot 'Append (after)')
+vim.keymap.set({ 'n', 'i' }, '<C-q>z', '<cmd>PrtPrepend<cr>', keymapOptionsParrot 'Prepend (before)')
+vim.keymap.set({ 'n' }, '<leader>qz', '<cmd>PrtPrepend<cr>', keymapOptionsParrot 'Prepend (before)')
+vim.keymap.set('v', '<C-q>e', ":<C-u>'<,'>PrtRewrite<cr>", keymapOptionsParrot 'Visual Rewrite')
+vim.keymap.set('v', '<leader>qe', ":<C-u>'<,'>PrtRewrite<cr>", keymapOptionsParrot 'Visual Rewrite')
+vim.keymap.set('v', '<C-q>a', ":<C-u>'<,'>PrtAppend<cr>", keymapOptionsParrot 'Visual Append (after)')
+vim.keymap.set('v', '<leader>qa', ":<C-u>'<,'>PrtAppend<cr>", keymapOptionsParrot 'Visual Append (after)')
+vim.keymap.set('v', '<C-q>z', ":<C-u>'<,'>PrtPrepend<cr>", keymapOptionsParrot 'Visual Prepend (before)')
+vim.keymap.set('v', '<leader>qz', ":<C-u>'<,'>PrtPrepend<cr>", keymapOptionsParrot 'Visual Prepend (before)')
 
--- GpNew, GpVnew
-vim.keymap.set({ 'n', 'i' }, '<C-q>wx', '<cmd>GpNew<cr>', keymapOptionsGp 'GpNew')
-vim.keymap.set({ 'n', 'i' }, '<leader>qwx', '<cmd>GpNew<cr>', keymapOptionsGp 'GpNew')
-vim.keymap.set({ 'n', 'i' }, '<C-q>wv', '<cmd>GpVnew<cr>', keymapOptionsGp 'GpVnew')
-vim.keymap.set({ 'n', 'i' }, '<leader>qwv', '<cmd>GpVnew<cr>', keymapOptionsGp 'GpVnew')
-vim.keymap.set('v', '<C-q>wx', ":<C-u>'<,'>GpNew<cr>", keymapOptionsGp 'Visual GpNew')
-vim.keymap.set('v', '<leader>qwx', ":<C-u>'<,'>GpNew<cr>", keymapOptionsGp 'Visual GpNew')
-vim.keymap.set('v', '<C-q>wv', ":<C-u>'<,'>GpVnew<cr>", keymapOptionsGp 'Visual GpVnew')
-vim.keymap.set('v', '<leader>qwv', ":<C-u>'<,'>GpVnew<cr>", keymapOptionsGp 'Visual GpVnew')
-
-vim.keymap.set({ 'n', 'i', 'v', 'x' }, '<C-q>s', '<cmd>GpStop<cr>', keymapOptionsGp 'Stop')
-vim.keymap.set({ 'n', 'v', 'x' }, '<leader>qs', '<cmd>GpStop<cr>', keymapOptionsGp 'Stop')
-
--- GP.NVIM Whisper
-vim.keymap.set({ 'n', 'i' }, '<C-q>ww', '<cmd>GpWhisper<cr>', keymapOptionsGp 'Whisper')
-vim.keymap.set({ 'n' }, '<leader>ww', '<cmd>GpWhisper<cr>', keymapOptionsGp 'Whisper')
-vim.keymap.set('v', '<C-q>ww', ":<C-u>'<,'>GpWhisper<cr>", keymapOptionsGp 'Visual Whisper')
-vim.keymap.set('v', '<leader>ww', ":<C-u>'<,'>GpWhisper<cr>", keymapOptionsGp 'Visual Whisper')
-
--- GP.NVIM Telescope agent picker
-vim.keymap.set('n', '<leader>fa', '<cmd>Telescope gp_picker agent<cr>', { desc = 'GP Agent Picker' })
-
+-- Control commands
+vim.keymap.set({ 'n', 'i', 'v', 'x' }, '<C-q>s', '<cmd>PrtStop<cr>', keymapOptionsParrot 'Stop')
+vim.keymap.set({ 'n', 'v', 'x' }, '<leader>qs', '<cmd>PrtStop<cr>', keymapOptionsParrot 'Stop')
+vim.keymap.set({ 'n' }, '<leader>qr', '<cmd>PrtRetry<cr>', keymapOptionsParrot 'Retry Last')
+vim.keymap.set({ 'n' }, '<leader>qi', '<cmd>PrtEdit<cr>', keymapOptionsParrot 'Edit Last Prompt')
+vim.keymap.set({ 'n' }, '<leader>qm', '<cmd>PrtModel<cr>', keymapOptionsParrot 'Select Model')
+vim.keymap.set({ 'n' }, '<leader>qo', '<cmd>PrtProvider<cr>', keymapOptionsParrot 'Select Provider')
+vim.keymap.set({ 'n' }, '<leader>qc', '<cmd>PrtContext<cr>', keymapOptionsParrot 'Edit Context')
+vim.keymap.set({ 'n' }, '<leader>q!', '<cmd>PrtCmd<cr>', keymapOptionsParrot 'Generate Command')
+vim.keymap.set({ 'n' }, '<leader>qS', '<cmd>PrtStatus<cr>', keymapOptionsParrot 'Show Status')
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
