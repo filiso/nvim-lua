@@ -1381,11 +1381,69 @@ require('lazy').setup({
         },
       }
 
+      -- Keep `nvchat` full-window on startup while preserving Parrot's usual split behavior elsewhere.
+      local function open_parrot_chat_in_current_window(params)
+        local chat_handler = require('parrot.config').chat_handler
+        params.args = ''
+        vim.g.parrot_chat_keep_current = true
+        local ok, result = pcall(function()
+          if chat_handler:toggle_close(chat_handler._toggle_kind.chat) then
+            return chat_handler:_new_chat(params, true)
+          end
+          return chat_handler:_new_chat(params, false)
+        end)
+        if not ok then
+          vim.g.parrot_chat_keep_current = false
+          error(result)
+        end
+        return result
+      end
+
+      local function should_reuse_current_window_for_parrot_chat()
+        local buf = vim.api.nvim_get_current_buf()
+        return vim.fn.argc() == 0
+          and vim.fn.winnr '$' == 1
+          and vim.api.nvim_buf_get_name(buf) == ''
+          and not vim.api.nvim_get_option_value('modified', { buf = buf })
+          and vim.api.nvim_buf_line_count(buf) == 1
+          and vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1] == ''
+      end
+
+      vim.api.nvim_create_user_command('PrtChatCurrent', function(params)
+        open_parrot_chat_in_current_window(params)
+      end, {
+        nargs = 0,
+        range = true,
+        desc = 'Open a new Parrot chat in the current window',
+      })
+
+      vim.api.nvim_del_user_command 'PrtChatNew'
+      vim.api.nvim_create_user_command('PrtChatNew', function(params)
+        if (params.args or '') == '' and should_reuse_current_window_for_parrot_chat() then
+          params.args = ''
+          open_parrot_chat_in_current_window(params)
+          return
+        end
+
+        require('parrot.config').ChatNew(params)
+      end, {
+        nargs = '?',
+        range = true,
+        desc = 'Parrot LLM plugin: ChatNew',
+        complete = function()
+          return { 'popup', 'split', 'vsplit', 'tabnew' }
+        end,
+      })
+
       vim.api.nvim_create_autocmd('BufWinEnter', {
         group = vim.api.nvim_create_augroup('parrot-chat-left', { clear = true }),
         callback = function(args)
           local name = vim.api.nvim_buf_get_name(args.buf)
-          if name ~= '' and name:find(parrot_chat_dir, 1, true) == 1 then
+          if vim.g.parrot_chat_keep_current then
+            vim.g.parrot_chat_keep_current = false
+            return
+          end
+          if vim.fn.winnr '$' > 1 and name ~= '' and name:find(parrot_chat_dir, 1, true) == 1 then
             vim.cmd 'wincmd H'
           end
         end,
