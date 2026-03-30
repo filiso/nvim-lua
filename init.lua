@@ -841,6 +841,9 @@ require('lazy').setup({
         -- Python LSP
         pyright = {},
 
+        -- Markdown LSP
+        marksman = {},
+
         lua_ls = {
           -- cmd = { ... },
           -- filetypes = { ... },
@@ -1150,6 +1153,12 @@ require('lazy').setup({
     --    - Incremental selection: Included, see `:help nvim-treesitter-incremental-selection-mod`
     --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
     --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
+  },
+  { -- Render Markdown in buffers using Treesitter
+    'MeanderingProgrammer/render-markdown.nvim',
+    ft = { 'markdown' },
+    dependencies = { 'nvim-treesitter/nvim-treesitter', 'nvim-tree/nvim-web-devicons' },
+    opts = {},
   },
 
   -- LLM chat support in a Neovim-native style with parrot.nvim
