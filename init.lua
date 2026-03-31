@@ -224,7 +224,7 @@ vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' }
 -- vim.keymap.set("n", "<C-S-j>", "<C-w>J", { desc = "Move window to the lower" })
 -- vim.keymap.set("n", "<C-S-k>", "<C-w>K", { desc = "Move window to the upper" })
 
--- Unified Neovim <-> Tmux navigation (normal & terminal, incl. snacks / Claude Code)
+-- Unified Neovim <-> Tmux navigation (normal & terminal, incl. snacks / Claude Code / Codex)
 -- Requires: vim.g.tmux_navigator_no_mappings = 1 (set before plugin load)
 local function TmuxWinNavigate(dir)
   -- Mapping from direction key to tmux-navigator command suffix
@@ -883,6 +883,9 @@ require('lazy').setup({
       require('mason-lspconfig').setup {
         ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
         automatic_installation = false,
+        automatic_enable = {
+          exclude = { 'stylua' },
+        },
         handlers = {
           function(server_name)
             local server = servers[server_name] or {}
@@ -1490,19 +1493,34 @@ require('lazy').setup({
       { 'folke/snacks.nvim', opts = { input = {}, picker = {}, terminal = {} } },
     },
     config = function()
+      local opencode_cmd = 'opencode --port'
+      local opencode_server_opts = {
+        win = {
+          position = 'left',
+          enter = false,
+          wo = { winbar = '' },
+          bo = { filetype = 'opencode_terminal' },
+          on_win = function(win)
+            require('opencode.terminal').setup(win.win)
+          end,
+        },
+      }
+
       ---@type opencode.Opts
       vim.g.opencode_opts = {
-        provider = {
-          enabled = 'snacks',
-          snacks = {
-            auto_close = true,
-            win = {
-              position = 'left', -- Split on the left side
-              enter = false, -- Stay in the editor after opening
-              wo = { winbar = '' },
-              bo = { filetype = 'opencode_terminal' },
-            },
-          },
+        server = {
+          start = function()
+            require('snacks.terminal').open(opencode_cmd, opencode_server_opts)
+          end,
+          stop = function()
+            local terminal = require('snacks.terminal').get(opencode_cmd, opencode_server_opts)
+            if terminal then
+              terminal:close()
+            end
+          end,
+          toggle = function()
+            require('snacks.terminal').toggle(opencode_cmd, opencode_server_opts)
+          end,
         },
       }
 
@@ -1535,17 +1553,43 @@ require('lazy').setup({
 
   -- OpenAI Codex Neovim integration
   {
-    'filiso/codexcli.nvim',
-    branch = 'split-fix',
-    -- optional: you can lazy-load on a command if you want
-    cmd = { 'CodexCLIStart', 'CodexCLI', 'CodexCLIStatus' },
-    config = function()
-      require('codexcli').setup {
-        auto_start = true, -- set true if you want it to start automatically
-        terminal_cmd = 'codex', -- the Codex CLI executable name
-        focus_after_send = true, -- optional UI behavior
-      }
-    end,
+    'ishiooon/codex.nvim',
+    dependencies = { 'folke/snacks.nvim' },
+    cmd = {
+      'Codex',
+      'CodexFocus',
+      'CodexOpen',
+      'CodexClose',
+      'CodexSend',
+      'CodexAdd',
+      'CodexTreeAdd',
+      'CodexDiffAccept',
+      'CodexDiffDeny',
+      'CodexSelectModel',
+    },
+    opts = {
+      terminal_cmd = 'codex',
+      keymaps = {
+        enabled = false,
+      },
+      status_indicator = {
+        enabled = false,
+      },
+      terminal = {
+        split_side = 'left',
+      },
+    },
+    config = true,
+    keys = {
+      { '<leader>x', nil, desc = 'AI/Codex' },
+      { '<leader>xc', '<cmd>Codex<cr>', desc = 'Toggle Codex' },
+      { '<leader>xf', '<cmd>CodexFocus<cr>', desc = 'Focus Codex' },
+      { '<leader>xb', '<cmd>CodexAdd %<cr>', desc = 'Add current buffer' },
+      { '<leader>xs', '<cmd>CodexSend<cr>', mode = 'v', desc = 'Send to Codex' },
+      { '<leader>xs', '<cmd>CodexTreeAdd<cr>', ft = { 'neo-tree', 'neo-tree-popup', 'oil' }, desc = 'Add file to Codex' },
+      { '<leader>xa', '<cmd>CodexDiffAccept<cr>', desc = 'Accept diff' },
+      { '<leader>xd', '<cmd>CodexDiffDeny<cr>', desc = 'Deny diff' },
+    },
   },
 
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
