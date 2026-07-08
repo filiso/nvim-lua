@@ -431,6 +431,9 @@ require('lazy').setup({
     },
   },
 
+  -- View all git diffs - current, specific commit, inspect git log
+  'sindrets/diffview.nvim',
+
   -- NOTE: Plugins can also be configured to run Lua code when they are loaded.
   --
   -- This is often very useful to both group configuration, as well as handle
@@ -1180,7 +1183,9 @@ require('lazy').setup({
         providers = {
           openai = {
             name = 'openai',
-            api_key = function() return os.getenv 'OPENAI_API_KEY' end,
+            api_key = function()
+              return os.getenv 'OPENAI_API_KEY'
+            end,
             endpoint = 'https://api.openai.com/v1/chat/completions',
             -- Default parameters for chat and command modes
             params = {
@@ -1203,7 +1208,9 @@ require('lazy').setup({
           },
           anthropic = {
             name = 'anthropic',
-            api_key = function() return os.getenv 'ANTHROPIC_API_KEY' end,
+            api_key = function()
+              return os.getenv 'ANTHROPIC_API_KEY'
+            end,
             endpoint = 'https://api.anthropic.com/v1/messages',
             params = {
               chat = { temperature = 0.8, max_tokens = 8192 },
@@ -1242,7 +1249,9 @@ require('lazy').setup({
           },
           gemini = {
             name = 'gemini',
-            api_key = function() return os.getenv 'GEMINI_API_KEY' end,
+            api_key = function()
+              return os.getenv 'GEMINI_API_KEY'
+            end,
             endpoint = function(self)
               return 'https://generativelanguage.googleapis.com/v1beta/models/' .. self._model .. ':streamGenerateContent?alt=sse'
             end,
