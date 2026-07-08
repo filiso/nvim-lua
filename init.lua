@@ -1161,7 +1161,12 @@ require('lazy').setup({
     'MeanderingProgrammer/render-markdown.nvim',
     ft = { 'markdown' },
     dependencies = { 'nvim-treesitter/nvim-treesitter', 'nvim-tree/nvim-web-devicons' },
-    opts = {},
+    opts = {
+      heading = {
+        -- Keep raw '#' markers instead of replacing them with numbered icons.
+        icons = {},
+      },
+    },
   },
 
   -- LLM chat support in a Neovim-native style with parrot.nvim
