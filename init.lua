@@ -179,6 +179,15 @@ vim.o.scrolloff = 10
 -- See `:help 'confirm'`
 vim.o.confirm = true
 
+-- Keep line wrapping enabled when Neovim starts in diff mode.
+vim.api.nvim_create_autocmd('VimEnter', {
+  callback = function()
+    if vim.wo.diff then
+      vim.wo.wrap = true
+    end
+  end,
+})
+
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 
