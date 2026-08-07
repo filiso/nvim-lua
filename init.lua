@@ -350,8 +350,7 @@ require('lazy').setup({
 
   -- Faster motions with hop
   {
-    'phaazon/hop.nvim',
-    branch = 'v2',
+    'smoka7/hop.nvim',
     opts = {
       keys = 'etovxqpdygfblzhckisuran',
     },
@@ -1131,6 +1130,7 @@ require('lazy').setup({
   },
   { -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
+    branch = '0.5-compat',
     build = ':TSUpdate',
     main = 'nvim-treesitter.configs', -- Sets main module to use for opts
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
