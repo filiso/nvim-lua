@@ -1,11 +1,11 @@
 --[[ 
 My TODOS:
 TODO:
-- figure out how to use black. Does it have to be installed separately in every Python env.?
-- add more keybind description to which-key
+- add more keybind descriptions to which-key
 - don't import all custom plugins at once. Do it separetely for debugging etc.
 NOTE:
 - install debugpy for every project that needs nvim-dap
+- `sudo apt install python3-venv` to install and use black
 --]]
 
 --[[
@@ -876,6 +876,7 @@ require('lazy').setup({
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
         'black', -- Python formatter - install manually if needed
+        'tree-sitter-cli', -- Used by nvim-treesitter to compile parsers
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
@@ -929,7 +930,7 @@ require('lazy').setup({
       formatters_by_ft = {
         lua = { 'stylua' },
         -- Conform can also run multiple formatters sequentially
-        -- python = { "black" }, -- Uncomment when black is available
+        python = { 'black' }, -- Uncomment when black is available
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
         -- javascript = { "prettierd", "prettier", stop_after_first = true },
@@ -1130,29 +1131,65 @@ require('lazy').setup({
   },
   { -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
-    branch = '0.5-compat',
+    branch = 'main', -- the rewrite; `master` does not support Neovim 0.12+
+    lazy = false, -- does not support lazy-loading
     build = ':TSUpdate',
-    main = 'nvim-treesitter.configs', -- Sets main module to use for opts
+    -- Parsers are compiled with the `tree-sitter` CLI, installed by Mason (which also puts it on PATH)
+    dependencies = { 'mason-org/mason.nvim' },
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
-    opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'python', 'query', 'vim', 'vimdoc' },
-      -- Autoinstall languages that are not installed
-      auto_install = true,
-      highlight = {
-        enable = true,
-        -- Some languages depend on vim's regex highlighting system (such as Ruby) for indent rules.
-        --  If you are experiencing weird indenting issues, add the language to
-        --  the list of additional_vim_regex_highlighting and disabled languages for indent.
-        additional_vim_regex_highlighting = { 'ruby' },
-      },
-      indent = { enable = true, disable = { 'ruby' } },
-    },
-    -- There are additional nvim-treesitter modules that you can use to interact
-    -- with nvim-treesitter. You should go explore a few and see what interests you:
-    --
-    --    - Incremental selection: Included, see `:help nvim-treesitter-incremental-selection-mod`
-    --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
-    --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
+    config = function()
+      local ts = require 'nvim-treesitter'
+      local parsers = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'python', 'query', 'vim', 'vimdoc' }
+
+      local function has_cli()
+        return vim.fn.executable 'tree-sitter' == 1
+      end
+
+      if has_cli() then
+        ts.install(parsers)
+      else
+        -- First run: wait until Mason has installed the CLI
+        vim.api.nvim_create_autocmd('User', {
+          pattern = 'MasonToolsUpdateCompleted',
+          once = true,
+          callback = vim.schedule_wrap(function()
+            if has_cli() then
+              ts.install(parsers)
+            end
+          end),
+        })
+      end
+
+      local function enable(buf, lang)
+        if not vim.api.nvim_buf_is_valid(buf) or not pcall(vim.treesitter.start, buf, lang) then
+          return
+        end
+        -- Ruby depends on vim's regex highlighting for its indent rules
+        if lang == 'ruby' then
+          vim.bo[buf].syntax = 'ON'
+        elseif vim.treesitter.query.get(lang, 'indents') then
+          vim.bo[buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+        end
+      end
+
+      vim.api.nvim_create_autocmd('FileType', {
+        group = vim.api.nvim_create_augroup('custom-treesitter', { clear = true }),
+        callback = function(args)
+          local lang = vim.treesitter.language.get_lang(args.match)
+          if not lang then
+            return
+          end
+          if vim.treesitter.language.add(lang) then
+            enable(args.buf, lang)
+          elseif has_cli() and vim.tbl_contains(ts.get_available(), lang) then
+            -- Autoinstall languages that are not installed
+            ts.install(lang):await(vim.schedule_wrap(function()
+              enable(args.buf, lang)
+            end))
+          end
+        end,
+      })
+    end,
   },
   { -- Render Markdown in buffers using Treesitter
     'MeanderingProgrammer/render-markdown.nvim',
@@ -1172,7 +1209,9 @@ require('lazy').setup({
         providers = {
           openai = {
             name = 'openai',
-            api_key = function() return os.getenv 'OPENAI_API_KEY' end,
+            api_key = function()
+              return os.getenv 'OPENAI_API_KEY'
+            end,
             endpoint = 'https://api.openai.com/v1/chat/completions',
             -- Default parameters for chat and command modes
             params = {
@@ -1195,7 +1234,9 @@ require('lazy').setup({
           },
           anthropic = {
             name = 'anthropic',
-            api_key = function() return os.getenv 'ANTHROPIC_API_KEY' end,
+            api_key = function()
+              return os.getenv 'ANTHROPIC_API_KEY'
+            end,
             endpoint = 'https://api.anthropic.com/v1/messages',
             params = {
               chat = { temperature = 0.8, max_tokens = 8192 },
@@ -1234,13 +1275,16 @@ require('lazy').setup({
           },
           gemini = {
             name = 'gemini',
-            api_key = function() return os.getenv 'GEMINI_API_KEY' end,
+            api_key = function()
+              return os.getenv 'GEMINI_API_KEY'
+            end,
             endpoint = function(self)
               return 'https://generativelanguage.googleapis.com/v1beta/models/' .. self._model .. ':streamGenerateContent?alt=sse'
             end,
-            model_endpoint = function(self)
+            -- Only fetch the model list when a key is set; otherwise parrot reports an error on startup
+            model_endpoint = (os.getenv 'GEMINI_API_KEY' or ''):match '%S' and function(self)
               return { 'https://generativelanguage.googleapis.com/v1beta/models?key=' .. self.api_key }
-            end,
+            end or nil,
             params = {
               chat = { temperature = 1.1, topP = 1, topK = 10, maxOutputTokens = 8192 },
               command = { temperature = 0.8, topP = 1, topK = 10, maxOutputTokens = 8192 },
